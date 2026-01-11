@@ -243,8 +243,14 @@ async def process_trial(message: types.Message, session, l10n: FluentLocalizatio
              traffic_bytes = data.get('trafficLimitBytes') or data.get('dataLimit') or 0
              traffic_gb = round(int(traffic_bytes) / (1024**3), 1)
              
+             # Fetch settings for correct display
+             from bot.services.settings import SettingsService
+             settings = await SettingsService.get_trial_settings()
+             duration_days = settings.get("days", tariff.duration_days)
+             
              expire_at_str = data.get('expireAt')
-             expire_display = f"{tariff.duration_days} Days"
+             # Use dynamic days
+             expire_display = f"{duration_days} Days"
              
              if expire_at_str:
                  try:

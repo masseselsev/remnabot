@@ -93,7 +93,23 @@ async def fulfill_order(order_id: int, session) -> bool:
                  return False
 
         # 3. Applying Settings (Tariff logic)
-        logger.info("applying_tariff_settings", uuid=rw_uuid, tariff_limit=tariff.traffic_limit_gb, duration=tariff.duration_days)
+        
+        # Override values if Trial
+        target_traffic_gb = tariff.traffic_limit_gb
+        target_duration_days = tariff.duration_days
+        
+        if tariff.is_trial:
+             from bot.services.settings import SettingsService
+             try:
+                 settings = await SettingsService.get_trial_settings()
+                 target_traffic_gb = settings.get('traffic', target_traffic_gb)
+                 target_duration_days = settings.get('days', target_duration_days)
+                 # squad uuid is handled below
+                 logger.info("using_dynamic_trial_settings", traffic=target_traffic_gb, days=target_duration_days)
+             except Exception as e:
+                 logger.error("failed_to_load_settings", error=str(e))
+
+        logger.info("applying_tariff_settings", uuid=rw_uuid, tariff_limit=target_traffic_gb, duration=target_duration_days)
         
         # Optimization: Fetch user ONCE and calculate all updates
         rw_user = await api.get_user(rw_uuid)
@@ -116,16 +132,14 @@ async def fulfill_order(order_id: int, session) -> bool:
                  updates["tag"] = new_tag_val
 
         # Traffic
-
-        # Traffic
-        if tariff.traffic_limit_gb:
+        if target_traffic_gb:
              current_limit = rw_user.get('trafficLimitBytes', 0) or 0
-             bytes_to_add = int(tariff.traffic_limit_gb * 1024 * 1024 * 1024)
+             bytes_to_add = int(target_traffic_gb * 1024 * 1024 * 1024)
              updates["trafficLimitBytes"] = int(current_limit) + bytes_to_add
              updates["trafficLimitStrategy"] = "NO_RESET"
         
         # Duration
-        if tariff.duration_days:
+        if target_duration_days:
              current_expire = rw_user.get('expireAt')
              import time
              from datetime import datetime, timedelta
@@ -143,7 +157,7 @@ async def fulfill_order(order_id: int, session) -> bool:
                  except Exception:
                      pass
              
-             new_expire_dt = datetime.fromtimestamp(base_ts) + timedelta(days=tariff.duration_days)
+             new_expire_dt = datetime.fromtimestamp(base_ts) + timedelta(days=target_duration_days)
              updates["expireAt"] = new_expire_dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
         # Apply updates
@@ -152,8 +166,25 @@ async def fulfill_order(order_id: int, session) -> bool:
 
         # 4. Squad Assignment
         if tariff.is_trial:
-             kv = await session.get(models.KeyValue, "trial_squad_uuid")
-             trial_squad_uuid = kv.value if kv else None
+             trial_squad_uuid = None
+             # Try from settings first (if loaded)
+             try:
+                 # Re-fetch or rely on local scope? 
+                 # We didn't save settings variable to outer scope properly in previous step?
+                 # Ah, it was inside 'if' block. We need to fetch it again or move fetching up.
+                 # Let's just fetch from SettingsService.get_setting to be safe/consistent 
+                 # or rely on DB KV directly since get_trial_settings uses KV.
+                 
+                 from bot.services.settings import SettingsService
+                 s_uuid = await SettingsService.get_setting("trial_squad_uuid")
+                 trial_squad_uuid = s_uuid
+             except:
+                 pass
+
+             if not trial_squad_uuid:
+                  # Fallback to direct model get if service fails?
+                  kv = await session.get(models.KeyValue, "trial_squad_uuid")
+                  trial_squad_uuid = kv.value if kv else None
              
              if not trial_squad_uuid:
                  logger.error("squad_assignment_skipped", reason="Trial squad UUID not configured")
