@@ -109,10 +109,14 @@ async def fulfill_order(order_id: int, session) -> bool:
         }
 
         # Tags
+        # Docs confirm 'tag' is a string.
         if tariff.is_trial:
+             new_tag_val = f"{current_tags},TRIAL_YES" if current_tags else "TRIAL_YES"
              if "TRIAL_YES" not in current_tags:
-                 updates["tag"] = f"{current_tags},TRIAL_YES" if current_tags else "TRIAL_YES"
-        
+                 updates["tag"] = new_tag_val
+
+        # Traffic
+
         # Traffic
         if tariff.traffic_limit_gb:
              current_limit = rw_user.get('trafficLimitBytes', 0) or 0
@@ -143,8 +147,8 @@ async def fulfill_order(order_id: int, session) -> bool:
              updates["expireAt"] = new_expire_dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
         # Apply updates
-        await api.update_user(rw_uuid, updates)
-        logger.info("settings_applied_successfully", uuid=rw_uuid)
+        update_resp = await api.update_user(rw_uuid, updates)
+        logger.info("settings_applied_successfully", uuid=rw_uuid, response_tags=update_resp.get('tag') or update_resp.get('tags'), updates=updates)
 
         # 4. Squad Assignment
         if tariff.is_trial:

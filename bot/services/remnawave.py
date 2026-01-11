@@ -67,6 +67,7 @@ class RemnawaveAPI:
     async def update_user(self, uuid: str, data: dict):
         payload = data.copy()
         payload['uuid'] = uuid
+        # Per docs: PATCH /api/users
         return await self._request("PATCH", "users", payload)
 
     async def add_duration(self, uuid: str, days: int):
