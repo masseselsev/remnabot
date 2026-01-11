@@ -29,3 +29,17 @@ trial-failed = ❌ Failed to activate trial. Please contact support.
 trial-days = { $count } Days
 trial-hours = { $count } Hours
 trial-less-day = Less than 1 Day
+
+support-welcome = 
+    👨‍💻 You contacted customer support.
+    Describe your problem or ask a question. An operator will reply shortly.
+
+    Type /cancel or press "Cancel" to exit.
+support-sent = ✅ Message sent.
+support-reply = 👨‍💻 Support: { $text }
+support-exit = 🚪 Support session ended.
+btn-cancel = ❌ Cancel
+support-recap-title = 📄 Chat History (last 7 messages):
+support-you = 👤 You
+support-agent = 👨‍💻 Support
+support-media = [Media]

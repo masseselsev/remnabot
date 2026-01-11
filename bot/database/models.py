@@ -89,3 +89,15 @@ class KeyValue(Base):
     
     key: Mapped[str] = mapped_column(String(255), primary_key=True)
     value: Mapped[str] = mapped_column(String)
+
+class SupportMessage(Base):
+    __tablename__ = "support_messages"
+    
+    admin_message_id: Mapped[int] = mapped_column(BigInteger, primary_key=True) # Message ID in Admin Group
+    user_id: Mapped[int] = mapped_column(BigInteger) # User Telegram ID
+    user_message_id: Mapped[int] = mapped_column(BigInteger) # Original Message ID (for context/edit)
+    
+    text: Mapped[str | None] = mapped_column(String, nullable=True)
+    sender: Mapped[str] = mapped_column(String(10), default="user") # "user" or "admin"
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

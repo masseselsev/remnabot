@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     webhook_port: int = 8000
 
     # Admin
+    admin_group_id: int
     admin_ids: List[int] = Field(default_factory=list)
 
     @field_validator("admin_ids", mode="before")
