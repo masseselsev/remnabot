@@ -1,0 +1,28 @@
+services:
+  bot:
+    build: .
+    container_name: remnabot
+    env_file:
+      - .env
+    volumes:
+      - ./bot:/app/bot
+    depends_on:
+      - postgres
+    restart: always
+    command: python -m bot.main
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: remnabot_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-remnabot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-remnabot}
+      POSTGRES_DB: ${POSTGRES_DB:-remnabot}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+
+volumes:
+  postgres_data:
