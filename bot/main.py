@@ -3,9 +3,10 @@ import structlog
 from aiogram import Bot, Dispatcher
 from bot.config import config
 from bot.database.core import init_db
-from bot.handlers import user, admin, shop, support, admin_panel
+from bot.handlers import user, admin, shop, support, admin_panel, fallback
 from bot.middlewares.i18n import I18nMiddleware
 from bot.middlewares.db import DbSessionMiddleware
+from bot.webhooks.payments import handle_yookassa
 
 from bot.logging_setup import setup_logging
 
@@ -27,11 +28,12 @@ async def main():
     dp.update.middleware(I18nMiddleware())
     
     # Register routers (handlers)
-    dp.include_router(admin_panel.router)
     dp.include_router(support.router)
     dp.include_router(user.router)
     dp.include_router(shop.router)
     dp.include_router(admin.router)
+    dp.include_router(admin_panel.router)
+    dp.include_router(fallback.router)
 
     if config.webhook_url:
         logger.info("Starting in WEBHOOK mode", url=config.webhook_url)
@@ -44,6 +46,8 @@ async def main():
         await bot.set_webhook(config.webhook_url, drop_pending_updates=True)
         
         app = web.Application()
+        # Register Payments Webhook
+        app.router.add_post("/payment/webhook/yookassa", handle_yookassa)
         
         webhook_handler = SimpleRequestHandler(
             dispatcher=dp,

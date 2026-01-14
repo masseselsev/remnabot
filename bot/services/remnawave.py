@@ -61,6 +61,18 @@ class RemnawaveAPI:
         }
         return await self._request("POST", "users", data)
 
+    async def create_custom_user(self, username: str, note: str = ""):
+        from datetime import datetime
+        data = {
+            "username": username,
+            "status": "ACTIVE",
+            "note": note,
+            "proxies": {},
+            "inbounds": {},
+            "expireAt": datetime.utcnow().isoformat() + "Z"
+        }
+        return await self._request("POST", "users", data)
+
     async def get_user(self, uuid: str):
         return await self._request("GET", f"users/{uuid}")
 

@@ -7,7 +7,6 @@ btn-support = 🆘 Support
 
 profile-title = 👤 Your Profile
 profile-id = ID: { $id }
-profile-balance = Balance: { $balance }
 profile-status = Status: { $status }
 
 subscription-active = ✅ Active until { $date }
@@ -33,13 +32,66 @@ trial-less-day = Less than 1 Day
 support-welcome = 
     👨‍💻 You contacted customer support.
     Describe your problem or ask a question. An operator will reply shortly.
-
-    Type /cancel or press "Cancel" to exit.
+    👋 **Welcome to Support!**
+    
+    You are chatting with an administrator.
+    Describe your issue, and we will reply shortly.
+    
+    Send `/start` or the button below to end the chat.
 support-sent = ✅ Message sent.
 support-reply = 👨‍💻 Support: { $text }
 support-exit = 🚪 Support session ended.
 btn-cancel = ❌ Cancel
-support-recap-title = 📄 Chat History (last 7 messages):
+support-recap-title = 📝 **Chat History:**
 support-you = 👤 You
 support-agent = 👨‍💻 Support
 support-media = [Media]
+
+# Admin Custom Plans (CP)
+admin-cp-title = 💎 **Custom Plans**
+admin-cp-list-desc = Select a plan or create a new one:
+admin-cp-create-btn = ➕ Create Plan
+admin-cp-back-btn = 🔙 Back
+admin-cp-create-step1 = 1️⃣ Enter Plan **Name**:
+admin-cp-create-step2 = 2️⃣ Enter **Squad UUID** (Internal Squad ID):
+admin-cp-create-step3 = 3️⃣ Enter **Traffic (GB)** per month (number):
+admin-cp-create-step4 = 4️⃣ Enter **Duration (months)** (0 = infinite/2099):
+admin-cp-create-step5 = 5️⃣ Enter **Tag** (or 0 to skip):
+admin-cp-val-error = ❌ Enter a number.
+admin-cp-created = ✅ Plan **{ $name }** created!
+admin-cp-not-found = Plan not found
+admin-cp-view-title = 💎 **{ $name }**
+admin-cp-view-squad = 🆔 Squad: `{ $squad }`
+admin-cp-view-traffic = 📊 Traffic: `{ $traffic } GB/mo`
+admin-cp-view-duration = ⏳ Duration: `{ $duration }`
+admin-cp-view-tag = 🏷 Tag: `{ $tag }`
+admin-cp-btn-grant = 🚀 Grant to User
+admin-cp-btn-edit = ✏️ Edit
+admin-cp-btn-delete = 🗑 Delete
+admin-cp-grant-step1 = 
+    🚀 Grant Plan **{ $name }**
+    
+    1️⃣ Enter **Username** (for panel):
+admin-cp-grant-step2 = 2️⃣ Enter **Telegram ID** (number, or 0 if none):
+admin-cp-grant-step3 = 3️⃣ Enter **Note** (or 0 if none):
+admin-cp-grant-confirm = 
+    🚀 **Confirm Grant**
+    
+    Plan: **{ $name }**
+    Username: `{ $username }`
+    TG ID: `{ $tgid }`
+    Note: `{ $desc }`
+admin-cp-btn-confirm = ✅ Create
+admin-cp-btn-cancel = ❌ Cancel
+admin-cp-grant-success = 
+    ✅ **User Created!**
+    
+    👤 Username: `{ $username }`
+    🔗 Link: `{ $link }`
+    📊 Traffic: { $traffic } GB/mo
+    ⏳ Expire: { $expire }
+admin-cp-btn-to-menu = 🔙 Menu
+
+bot-unknown-command = 
+    ℹ️ Please select a menu item.
+    For technical questions, please contact "Support".

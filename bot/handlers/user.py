@@ -362,7 +362,6 @@ async def process_profile(message: types.Message, session, l10n: FluentLocalizat
     text = (
         f"{l10n.format_value('profile-title')}\n"
         f"{l10n.format_value('profile-id', {'id': user.id})}\n"
-        f"{l10n.format_value('profile-balance', {'balance': user.balance})}\n"
         f"{formatted_status}"
         f"{traffic_info}"
     )

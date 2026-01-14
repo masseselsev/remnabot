@@ -19,10 +19,13 @@ async def create_order(user_id: int, tariff_id: int, amount: float, provider: st
     await session.commit()
     return order
 
-async def fulfill_order(order_id: int, session) -> bool:
+async def fulfill_order(order_id: int, session, payment_id: str = None) -> bool:
     order = await session.get(models.Order, order_id)
     if not order or order.status == models.OrderStatus.PAID:
         return False
+        
+    if payment_id:
+        order.invoice_id = payment_id
     
     user = await session.get(models.User, order.user_id)
     tariff = await session.get(models.Tariff, order.tariff_id)

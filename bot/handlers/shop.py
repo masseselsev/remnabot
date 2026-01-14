@@ -78,16 +78,14 @@ async def process_promo(message: types.Message, state: FSMContext, session):
 
 async def show_payment_methods(message: types.Message, state: FSMContext):
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="⭐️ Telegram Stars", callback_data="pay_stars")],
-        [types.InlineKeyboardButton(text="💳 YooKassa", callback_data="pay_yookassa")],
-        [types.InlineKeyboardButton(text="💳 Platega", callback_data="pay_platega")],
-        [types.InlineKeyboardButton(text="💳 Tribute", callback_data="pay_tribute")]
+        [types.InlineKeyboardButton(text="💳 Банковская карта (РФ)", callback_data="pay_yookassa")],
+        # [types.InlineKeyboardButton(text="⭐️ Telegram Stars", callback_data="pay_stars")],
     ])
-    await message.answer("Select payment method:", reply_markup=kb)
+    await message.answer("Выберите способ оплаты:", reply_markup=kb)
 
 @router.callback_query(ShopState.selecting_payment)
 async def payment_selected(callback: types.CallbackQuery, state: FSMContext, session):
-    method = callback.data.split("_")[1]
+    method = callback.data # pay_yookassa
     data = await state.get_data()
     
     # Calculate final price
@@ -101,56 +99,40 @@ async def payment_selected(callback: types.CallbackQuery, state: FSMContext, ses
             else:
                 price = max(0, price - promo.value)
     
-    
-    # Create Order
+    # Payment Provider Logic
     from bot.services.orders import create_order
-    from bot.database import models
+    from bot.services.payment import get_payment_service
     
-    # Map callback data to enum or string
-    # pay_stars -> stars, pay_yookassa -> yookassa
-    provider_map = {
-        "pay_stars": models.PaymentProvider.STARS,
-        "pay_yookassa": models.PaymentProvider.YOOKASSA,
-        "pay_platega": models.PaymentProvider.PLATEGA,
-        "pay_tribute": models.PaymentProvider.TRIBUTE
-    }
-    provider = provider_map.get(method, models.PaymentProvider.MANUAL)
-    
+    provider = models.PaymentProvider.MANUAL
+    if method == "pay_yookassa":
+        provider = models.PaymentProvider.YOOKASSA
+    elif method == "pay_stars":
+        provider = models.PaymentProvider.STARS
+        
     # Create DB Order
     order = await create_order(callback.from_user.id, data['tariff_id'], price, provider, session)
     
-    # Create Payment via Gateway
-    from bot.services.payment_service import payment_service
-    gateway = payment_service.get_gateway(method)
-    
-    if not gateway:
-        await callback.message.answer("❌ Payment method not implemented yet.")
-        await callback.answer()
-        return
-
     try:
-        pid, url = await gateway.create_payment(
+        service = get_payment_service(provider)
+        
+        # Metadata must be strings for some gateways
+        pid, url = await service.create_payment(
             amount=price, 
-            currency=data['currency'], 
-            description=f"VPN {data.get('tariff_name', 'Subscription')}", 
-            metadata={"order_id": order.id}
+            description=f"Order #{order.id}", 
+            metadata={"order_id": str(order.id)}
         )
         
-        # Save invoice_id to order
+        # Save invoice_id
         order.invoice_id = pid
         await session.commit()
         
-        # Send Invoice
-        if method == "pay_stars":
-            # Stars needs special handling (send_invoice)
-            # await callback.message.send_invoice(...)
-            await callback.message.answer(f"⭐️ Pay with Stars: [Invoice]({url})", parse_mode="Markdown")
-        else:
-            kb = types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="💸 Pay", url=url)]])
-            await callback.message.answer(f"Order #{order.id} created.\nAmount: {price} {data['currency']}", reply_markup=kb)
-            
+        kb = types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="💳 Оплатить", url=url)]])
+        await callback.message.answer(f"✅ Заказ #{order.id} создан.\nСумма к оплате: {price} RUB", reply_markup=kb)
+        
+    except NotImplementedError:
+        await callback.message.answer("❌ Этот способ оплаты еще не настроен.")
     except Exception as e:
-        await callback.message.answer(f"❌ Payment error: {str(e)}")
+        await callback.message.answer(f"❌ Ошибка создания платежа: {e}")
         
     await callback.answer()
 

@@ -29,7 +29,7 @@ class User(Base):
     
     remnawave_uuid: Mapped[str | None] = mapped_column(String(100), nullable=True)
     
-    balance: Mapped[float] = mapped_column(Float, default=0.0)
+    # balance field removed
     is_trial_used: Mapped[bool] = mapped_column(Boolean, default=False)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -101,3 +101,13 @@ class SupportMessage(Base):
     sender: Mapped[str] = mapped_column(String(10), default="user") # "user" or "admin"
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+class SpecialTariff(Base):
+    __tablename__ = "special_tariffs"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String, unique=True)
+    squad_uuid: Mapped[str] = mapped_column(String)
+    traffic_gb: Mapped[float] = mapped_column(Float)
+    duration_months: Mapped[int] = mapped_column(Integer)
+    tag: Mapped[str | None] = mapped_column(String, nullable=True)

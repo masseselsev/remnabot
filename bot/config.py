@@ -18,10 +18,10 @@ class Settings(BaseSettings):
     postgres_port: int = 5432
     
     # Payments
-    payment_provider_token_stars: Optional[SecretStr] = None
-    payment_provider_token_yookassa: Optional[SecretStr] = None
-    payment_provider_token_platega: Optional[SecretStr] = None
-    payment_provider_token_tribute: Optional[SecretStr] = None
+    yookassa_shop_id: Optional[int] = None
+    yookassa_secret_key: Optional[SecretStr] = None
+    
+    bot_link: str = "https://t.me/YourBot" # For redirect after payment
     
     # Webhook
     webhook_url: Optional[str] = None

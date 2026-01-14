@@ -6,6 +6,8 @@ services:
       - .env
     volumes:
       - ./bot:/app/bot
+    ports:
+      - "127.0.0.1:8000:8000"
     depends_on:
       - postgres
     restart: always
@@ -20,8 +22,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-remnabot}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     restart: always
 
 volumes:
