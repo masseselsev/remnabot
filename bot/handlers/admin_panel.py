@@ -397,12 +397,23 @@ async def cp_grant_execute(callback: types.CallbackQuery, state: FSMContext, ses
             await session.commit()
             
         # 6. Report
-        link_url = f"{config.remnawave_url}/sub/{uuid}"
+        # 6. Report
+        # Try to get subscription link from response
+        sub_link = None
+        if 'response' in resp:
+             sub_link = resp['response'].get('subscriptionUrl')
+        else:
+             sub_link = resp.get('subscriptionUrl')
+             
+        if not sub_link:
+            # Fallback if API doesn't return it
+            sub_link = f"{config.remnawave_url}/sub/{uuid}"
+
         expire_str = "∞" if tariff.duration_months == 0 else expire_dt.strftime('%d.%m.%Y')
         
         msg = l10n.format_value("admin-cp-grant-success", {
             "username": username,
-            "link": link_url,
+            "link": sub_link,
             "traffic": tariff.traffic_gb,
             "expire": expire_str
         })

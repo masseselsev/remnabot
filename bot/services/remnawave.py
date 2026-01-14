@@ -67,6 +67,7 @@ class RemnawaveAPI:
             "username": username,
             "status": "ACTIVE",
             "note": note,
+            "description": note,
             "proxies": {},
             "inbounds": {},
             "expireAt": datetime.utcnow().isoformat() + "Z"
