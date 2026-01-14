@@ -32,6 +32,18 @@ class Settings(BaseSettings):
     admin_group_id: int
     admin_ids: List[int] = Field(default_factory=list)
 
+    @field_validator("yookassa_shop_id", mode="before")
+    @classmethod
+    def parse_optional_int(cls, v: Any) -> Optional[int]:
+        if v == "" or v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return int(v)
+            except ValueError:
+                return None # Or raise, but for env vars usually None is safer if empty/junk
+        return v
+
     @field_validator("admin_ids", mode="before")
     @classmethod
     def parse_admin_ids(cls, v: Any) -> List[int]:
