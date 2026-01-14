@@ -95,3 +95,36 @@ admin-cp-btn-to-menu = 🔙 Menu
 bot-unknown-command = 
     ℹ️ Please select a menu item.
     For technical questions, please contact "Support".
+
+# Admin General
+admin-title = 🔧 **Admin Panel**
+    Select a section:
+admin-btn-trial = 🎁 Trial Settings
+admin-btn-cp = 💎 Custom Plans
+admin-btn-exit = ❌ Exit
+admin-exit-msg = 👋 You have exited the admin panel.
+
+# Trial Settings
+admin-trial-title = 🎁 **Trial Settings**
+admin-trial-info = 
+    ⏳ Duration: `{ $days }` days
+    📊 Traffic: `{ $traffic }` GB
+    🆔 Internal Squad UUID: `{ $squad }`
+admin-btn-edit-days = ✏️ Set Days
+admin-btn-edit-traffic = ✏️ Set Traffic
+admin-btn-edit-squad = ✏️ Set Squad UUID
+admin-ask-days = Enter new duration (in days):
+admin-set-days-success = ✅ Set: { $val } days
+admin-set-days-error = ❌ Please enter a number.
+admin-ask-traffic = Enter traffic limit (in GB):
+admin-set-traffic-success = ✅ Set: { $val } GB
+admin-set-traffic-error = ❌ Please enter a number (float allowed).
+admin-ask-squad = Enter new Squad UUID:
+admin-set-squad-success = ✅ Set Squad UUID: { $val }
+
+# Misc
+admin-deleted = ✅ Deleted
+admin-wait = ⏳ ...
+admin-invalid-id = ❌ Invalid ID
+admin-error = ❌ Error: { $error }
+admin-month-short = mo

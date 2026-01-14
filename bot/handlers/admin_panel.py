@@ -34,22 +34,22 @@ class AdminStates(StatesGroup):
     prov_desc = State()
     prov_confirm = State()
 
-async def get_main_kb():
+async def get_main_kb(l10n: FluentLocalization):
     return types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="🎁 Настройки Триала", callback_data="admin_trial")],
-        [types.InlineKeyboardButton(text="💎 Спецтарифы", callback_data="admin_cp_list")],
-        [types.InlineKeyboardButton(text="❌ Выйти", callback_data="admin_exit")]
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-trial"), callback_data="admin_trial")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-cp"), callback_data="admin_cp_list")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-exit"), callback_data="admin_exit")]
     ])
 
 # ... cmd_admin ...
 
 @router.message(Command("admin"))
-async def cmd_admin(message: types.Message, state: FSMContext):
+async def cmd_admin(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     if message.from_user.id not in config.admin_ids:
         return
         
     await state.clear()
-    await message.answer("🔧 **Админ-панель**\nВыберите раздел:", reply_markup=await get_main_kb(), parse_mode="Markdown")
+    await message.answer(l10n.format_value("admin-title"), reply_markup=await get_main_kb(l10n), parse_mode="Markdown")
 
 @router.callback_query(F.data == "admin_exit")
 async def admin_exit(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
@@ -68,31 +68,31 @@ async def admin_exit(callback: types.CallbackQuery, state: FSMContext, l10n: Flu
     ]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     
-    await callback.message.answer("👋 Вы вышли из админ-панели.", reply_markup=keyboard)
+    await callback.message.answer(l10n.format_value("admin-exit-msg"), reply_markup=keyboard)
 
 @router.callback_query(F.data == "admin_menu")
-async def back_to_menu(callback: types.CallbackQuery, state: FSMContext):
+async def back_to_menu(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
     await state.clear()
-    await callback.message.edit_text("🔧 **Админ-панель**\nВыберите раздел:", reply_markup=await get_main_kb(), parse_mode="Markdown")
+    await callback.message.edit_text(l10n.format_value("admin-title"), reply_markup=await get_main_kb(l10n), parse_mode="Markdown")
 
 # --- Trial Settings ---
 
 @router.callback_query(F.data == "admin_trial")
-async def trial_settings_menu(callback: types.CallbackQuery, state: FSMContext):
+async def trial_settings_menu(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
     settings = await SettingsService.get_trial_settings()
     
-    text = (
-        "🎁 **Настройки Триала**\n\n"
-        f"⏳ Длительность: `{settings['days']}` дней\n"
-        f"📊 Трафик: `{settings['traffic']}` GB\n"
-        f"🆔 Internal Squad UUID: `{settings['squad_uuid']}`"
-    )
+    text = f"{l10n.format_value('admin-trial-title')}\n\n" + \
+           l10n.format_value("admin-trial-info", {
+               "days": settings['days'],
+               "traffic": settings['traffic'],
+               "squad": settings['squad_uuid']
+           })
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="✏️ Задать Дни", callback_data="a_edit_days"),
-         types.InlineKeyboardButton(text="✏️ Задать Трафик", callback_data="a_edit_traffic")],
-        [types.InlineKeyboardButton(text="✏️ Изменить Squad UUID", callback_data="a_edit_squad")],
-        [types.InlineKeyboardButton(text="🔙 Назад", callback_data="admin_menu")]
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-edit-days"), callback_data="a_edit_days"),
+         types.InlineKeyboardButton(text=l10n.format_value("admin-btn-edit-traffic"), callback_data="a_edit_traffic")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-edit-squad"), callback_data="a_edit_squad")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_menu")]
     ])
     
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
@@ -100,45 +100,45 @@ async def trial_settings_menu(callback: types.CallbackQuery, state: FSMContext):
 # Edit Handlers
 
 @router.callback_query(F.data == "a_edit_days")
-async def ask_days(callback: types.CallbackQuery, state: FSMContext):
+async def ask_days(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
     await state.set_state(AdminStates.edit_trial_days)
-    await callback.message.edit_text("Введите новую длительность (в днях):", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="🔙 Отмена", callback_data="admin_trial")]]))
+    await callback.message.edit_text(l10n.format_value("admin-ask-days"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="admin_trial")]]))
 
 @router.message(AdminStates.edit_trial_days)
-async def set_days(message: types.Message, state: FSMContext):
+async def set_days(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     try:
         val = int(message.text)
         await SettingsService.set_setting("trial_days", str(val))
-        await message.answer(f"✅ Установлено: {val} дней")
-        await cmd_admin(message, state) 
+        await message.answer(l10n.format_value("admin-set-days-success", {"val": val}))
+        await cmd_admin(message, state, l10n) 
     except ValueError:
-        await message.answer("❌ Нужно ввести число.")
+        await message.answer(l10n.format_value("admin-set-days-error"))
 
 @router.callback_query(F.data == "a_edit_traffic")
-async def ask_traffic(callback: types.CallbackQuery, state: FSMContext):
+async def ask_traffic(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
     await state.set_state(AdminStates.edit_trial_traffic)
-    await callback.message.edit_text("Введите лимит трафика (в GB):", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="🔙 Отмена", callback_data="admin_trial")]]))
+    await callback.message.edit_text(l10n.format_value("admin-ask-traffic"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="admin_trial")]]))
 
 @router.message(AdminStates.edit_trial_traffic)
-async def set_traffic(message: types.Message, state: FSMContext):
+async def set_traffic(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     try:
         val = float(message.text)
         await SettingsService.set_setting("trial_traffic_gb", str(val))
-        await message.answer(f"✅ Установлено: {val} GB")
-        await cmd_admin(message, state)
+        await message.answer(l10n.format_value("admin-set-traffic-success", {"val": val}))
+        await cmd_admin(message, state, l10n)
     except ValueError:
-        await message.answer("❌ Нужно ввести число (можно дробное, через точку).")
+        await message.answer(l10n.format_value("admin-set-traffic-error"))
 
 @router.callback_query(F.data == "a_edit_squad")
-async def ask_squad(callback: types.CallbackQuery, state: FSMContext):
+async def ask_squad(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
     await state.set_state(AdminStates.edit_trial_plan) # Reuse state or rename? Reuse is fine but confusing. Let's keep state name.
-    await callback.message.edit_text("Введите новый Squad UUID:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="🔙 Отмена", callback_data="admin_trial")]]))
+    await callback.message.edit_text(l10n.format_value("admin-ask-squad"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="admin_trial")]]))
 
 @router.message(AdminStates.edit_trial_plan)
-async def set_squad(message: types.Message, state: FSMContext):
+async def set_squad(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     await SettingsService.set_setting("trial_squad_uuid", message.text.strip())
-    await message.answer(f"✅ Установлено Squad UUID: {message.text}")
-    await cmd_admin(message, state)
+    await message.answer(l10n.format_value("admin-set-squad-success", {"val": message.text}))
+    await cmd_admin(message, state, l10n)
 
 # --- Custom Plans (Special Tariffs) ---
 
@@ -227,7 +227,7 @@ async def cp_finish_create(message: types.Message, state: FSMContext, session, l
         await message.answer(l10n.format_value("admin-cp-created", {"name": new_tariff.name}))
         
     await state.update_data(edit_tariff_id=None)
-    await cmd_admin(message, state)
+    await cmd_admin(message, state, l10n)
 
 @router.callback_query(F.data.startswith("cp_edit_"))
 async def cp_edit_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
@@ -245,7 +245,7 @@ async def cp_view(callback: types.CallbackQuery, state: FSMContext, session, l10
     try:
         tariff_id = int(callback.data.split("_")[2])
     except (IndexError, ValueError):
-        await callback.answer("Invalid ID")
+        await callback.answer(l10n.format_value("admin-invalid-id"))
         return
 
     tariff = await session.get(models.SpecialTariff, tariff_id)
@@ -255,7 +255,7 @@ async def cp_view(callback: types.CallbackQuery, state: FSMContext, session, l10
         await cp_list(callback, state, session, l10n)
         return
 
-    dur_display = "∞" if tariff.duration_months == 0 else f"{tariff.duration_months} mo"
+    dur_display = "∞" if tariff.duration_months == 0 else f"{tariff.duration_months} {l10n.format_value('admin-month-short')}"
 
     text = (
         f"{l10n.format_value('admin-cp-view-title', {'name': tariff.name})}\n\n"
@@ -280,7 +280,7 @@ async def cp_delete(callback: types.CallbackQuery, state: FSMContext, session, l
     stmt = delete(models.SpecialTariff).where(models.SpecialTariff.id == tariff_id)
     await session.execute(stmt)
     await session.commit()
-    await callback.answer("Deleted")
+    await callback.answer(l10n.format_value("admin-deleted"))
     await cp_list(callback, state, session, l10n)
 
 # Grant Wizard
@@ -343,7 +343,7 @@ async def cp_grant_execute(callback: types.CallbackQuery, state: FSMContext, ses
     tgid = data['tgid']
     desc = data['desc']
     
-    await callback.message.edit_text("⏳ ...")
+    await callback.message.edit_text(l10n.format_value("admin-wait"))
     
     # 1. Calc Duration
     if tariff.duration_months == 0:
@@ -425,4 +425,4 @@ async def cp_grant_execute(callback: types.CallbackQuery, state: FSMContext, ses
         
     except Exception as e:
         logger.error("grant_error", error=str(e))
-        await callback.message.edit_text(f"❌ Error: {str(e)}", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-to-menu"), callback_data="admin_cp_list")]]))
+        await callback.message.edit_text(l10n.format_value("admin-error", {"error": str(e)}), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-to-menu"), callback_data="admin_cp_list")]]))

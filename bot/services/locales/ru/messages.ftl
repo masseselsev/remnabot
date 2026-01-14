@@ -97,3 +97,36 @@ admin-cp-btn-to-menu = 🔙 В меню
 bot-unknown-command = 
     ℹ️ Выберите пункт меню. 
     По техническим вопросам обращайтесь в раздел "Поддержка".
+
+# Admin General
+admin-title = 🔧 **Админ-панель**
+    Выберите раздел:
+admin-btn-trial = 🎁 Настройки Триала
+admin-btn-cp = 💎 Спецтарифы
+admin-btn-exit = ❌ Выйти
+admin-exit-msg = 👋 Вы вышли из админ-панели.
+
+# Trial Settings
+admin-trial-title = 🎁 **Настройки Триала**
+admin-trial-info = 
+    ⏳ Длительность: `{ $days }` дней
+    📊 Трафик: `{ $traffic }` GB
+    🆔 Internal Squad UUID: `{ $squad }`
+admin-btn-edit-days = ✏️ Задать Дни
+admin-btn-edit-traffic = ✏️ Задать Трафик
+admin-btn-edit-squad = ✏️ Изменить Squad UUID
+admin-ask-days = Введите новую длительность (в днях):
+admin-set-days-success = ✅ Установлено: { $val } дней
+admin-set-days-error = ❌ Нужно ввести число.
+admin-ask-traffic = Введите лимит трафика (в GB):
+admin-set-traffic-success = ✅ Установлено: { $val } GB
+admin-set-traffic-error = ❌ Нужно ввести число (можно дробное, через точку).
+admin-ask-squad = Введите новый Squad UUID:
+admin-set-squad-success = ✅ Установлено Squad UUID: { $val }
+
+# Misc
+admin-deleted = ✅ Удалено
+admin-wait = ⏳ ...
+admin-invalid-id = ❌ Некорректный ID
+admin-error = ❌ Ошибка: { $error }
+admin-month-short = мес
