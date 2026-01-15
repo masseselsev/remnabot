@@ -155,9 +155,9 @@ admin-t-view-traffic = 📊 Traffic Limit: { $traffic } GB
 admin-t-btn-grant = 🎁 Give to User
 admin-t-grant-ask = Enter user's Telegram ID (numeric):
 admin-t-grant-success-full = 
-    ✅ Tariff **{ $tariff }** granted!
+    ✅ Tariff <b>{ $tariff }</b> granted!
     
-    👤 User: `{ $user_id }` ({ $username })
+    👤 User: { $user_id } { $username }
     📅 Duration: { $days } days
     📊 Traffic: { $traffic } GB
     

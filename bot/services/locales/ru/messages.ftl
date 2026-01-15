@@ -157,9 +157,9 @@ admin-t-view-traffic = 📊 Трафик: { $traffic } ГБ
 admin-t-btn-grant = 🎁 Выдать пользователю
 admin-t-grant-ask = Введите Telegram ID пользователя (цифры):
 admin-t-grant-success-full = 
-    ✅ Тариф **{ $tariff }** успешно выдан!
+    ✅ Тариф <b>{ $tariff }</b> выдан!
     
-    👤 Юзер: `{ $user_id }` ({ $username })
+    👤 User: { $user_id } { $username }
     📅 Срок: { $days } дн.
     📊 Трафик: { $traffic } ГБ
     

@@ -9,6 +9,7 @@ from bot.database import models
 from sqlalchemy import select, delete
 from bot.services.remnawave import api
 from datetime import datetime, timedelta
+from html import escape
 import structlog
 
 logger = structlog.get_logger()
@@ -636,16 +637,18 @@ async def t_grant_process(message: types.Message, state: FSMContext, session, l1
                  except Exception as e:
                      link = f"Error fetching link: {e}"
              
+             display_username = f" (@{escape(u.username)})" if u.username else ""
+             
              msg_text = l10n.format_value("admin-t-grant-success-full", {
-                 "tariff": tariff.name,
+                 "tariff": escape(tariff.name),
                  "user_id": target_user_id,
-                 "username": u.username or "No username",
+                 "username": display_username,
                  "days": tariff.duration_days,
                  "traffic": tariff.traffic_limit_gb or "∞",
                  "link": link
              })
              
-             await message.answer(msg_text, parse_mode="Markdown")
+             await message.answer(msg_text, parse_mode="HTML")
              
              # Notify user
              try:
