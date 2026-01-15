@@ -168,35 +168,24 @@ async def fulfill_order(order_id: int, session, payment_id: str = None) -> bool:
         logger.info("settings_applied_successfully", uuid=rw_uuid, response_tags=update_resp.get('tag') or update_resp.get('tags'), updates=updates)
 
         # 4. Squad Assignment
+        # 4. Squad Assignment
+        target_squad_uuid = None
+        
         if tariff.is_trial:
-             trial_squad_uuid = None
-             # Try from settings first (if loaded)
+             from bot.services.settings import SettingsService
              try:
-                 # Re-fetch or rely on local scope? 
-                 # We didn't save settings variable to outer scope properly in previous step?
-                 # Ah, it was inside 'if' block. We need to fetch it again or move fetching up.
-                 # Let's just fetch from SettingsService.get_setting to be safe/consistent 
-                 # or rely on DB KV directly since get_trial_settings uses KV.
-                 
-                 from bot.services.settings import SettingsService
-                 s_uuid = await SettingsService.get_setting("trial_squad_uuid")
-                 trial_squad_uuid = s_uuid
+                 target_squad_uuid = await SettingsService.get_setting("trial_squad_uuid")
              except:
                  pass
-
-             if not trial_squad_uuid:
-                  # Fallback to direct model get if service fails?
-                  kv = await session.get(models.KeyValue, "trial_squad_uuid")
-                  trial_squad_uuid = kv.value if kv else None
+        elif tariff.squad_uuid:
+             target_squad_uuid = tariff.squad_uuid
              
-             if not trial_squad_uuid:
-                 logger.error("squad_assignment_skipped", reason="Trial squad UUID not configured")
-             else:
-                 try:
-                    await api.add_user_to_squad(rw_uuid, trial_squad_uuid)
-                    logger.info("user_added_to_trial_squad", squad_uuid=trial_squad_uuid)
-                 except Exception as e:
-                    logger.error("squad_assignment_failed", error=str(e))
+        if target_squad_uuid:
+             try:
+                await api.add_user_to_squad(rw_uuid, target_squad_uuid)
+                logger.info("user_added_to_squad", squad_uuid=target_squad_uuid)
+             except Exception as e:
+                logger.error("squad_assignment_failed", error=str(e))
 
         user.is_trial_used = True
         

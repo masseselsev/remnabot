@@ -41,6 +41,7 @@ class AdminStates(StatesGroup):
     t_price_usd = State()
     t_days = State()
     t_traffic = State()
+    t_squad = State()
     t_grant_id = State()
 
 async def get_main_kb(l10n: FluentLocalization):
@@ -513,7 +514,21 @@ async def t_set_days(message: types.Message, state: FSMContext, l10n: FluentLoca
 async def t_set_traffic(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
     try:
         limit = int(message.text)
+        await state.update_data(traffic=limit)
+        await state.set_state(AdminStates.t_squad)
+        await message.answer(l10n.format_value("admin-t-ask-squad"))
+    except ValueError:
+        await message.answer(l10n.format_value("admin-t-val-int"))
+
+@router.message(AdminStates.t_squad)
+async def t_set_squad(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    try:
+        squad_uuid = message.text.strip()
+        if squad_uuid == "0":
+            squad_uuid = None
+            
         data = await state.get_data()
+        limit = data['traffic']
         
         t = models.Tariff(
             name=data['name'],
@@ -522,6 +537,7 @@ async def t_set_traffic(message: types.Message, state: FSMContext, session, l10n
             price_usd=data['usd'],
             duration_days=data['days'],
             traffic_limit_gb=limit if limit > 0 else None,
+            squad_uuid=squad_uuid,
             is_trial=False,
             is_active=True
         )
@@ -547,6 +563,7 @@ async def t_view(callback: types.CallbackQuery, state: FSMContext, session, l10n
         f"{l10n.format_value('admin-t-view-title', {'name': t.name})}\n"
         f"{l10n.format_value('admin-t-view-prices', {'rub': t.price_rub, 'stars': t.price_stars, 'usd': t.price_usd})}\n"
         f"{l10n.format_value('admin-t-view-duration', {'days': t.duration_days})}\n"
+        f"{l10n.format_value('admin-t-view-squad', {'squad': t.squad_uuid or 'Default'})}\n"
         f"{l10n.format_value('admin-t-view-traffic', {'traffic': t.traffic_limit_gb or 'Unlimited'})}"
     )
     
