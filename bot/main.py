@@ -6,6 +6,7 @@ from bot.database.core import init_db
 from bot.handlers import user, admin, shop, support, admin_panel, fallback
 from bot.middlewares.i18n import I18nMiddleware
 from bot.middlewares.db import DbSessionMiddleware
+from bot.middlewares.logging import StructLoggingMiddleware
 from bot.webhooks.payments import handle_yookassa
 
 from bot.logging_setup import setup_logging
@@ -24,6 +25,7 @@ async def main():
     dp = Dispatcher()
     
     # Register middlewares
+    dp.update.middleware(StructLoggingMiddleware()) # Must be first to capture context
     dp.update.middleware(DbSessionMiddleware())
     dp.update.middleware(I18nMiddleware())
     
