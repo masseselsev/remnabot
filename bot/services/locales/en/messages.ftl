@@ -129,3 +129,45 @@ admin-wait = ⏳ ...
 admin-invalid-id = ❌ Invalid ID
 admin-error = ❌ Error: { $error }
 admin-month-short = mo
+
+# Admin Standard Tariffs
+admin-t-list-title = 📦 **Standard Tariffs:**
+admin-t-create-btn = ➕ Create Tariff
+admin-t-create-name = Enter tariff name:
+admin-t-create-cancel = Cancel
+admin-t-create-rub = Enter price in RUB (float):
+admin-t-create-stars = Enter price in Stars (int):
+admin-t-create-usd = Enter price in USD (float):
+admin-t-create-days = Enter duration (days):
+admin-t-create-traffic = Enter traffic limit in GB (0 for unlimited):
+admin-t-val-number = Must be a number.
+admin-t-val-int = Must be an integer.
+admin-t-created = ✅ Tariff **{ $name }** created!
+admin-t-list-btn = List
+admin-t-view-title = 📦 **{ $name }**
+admin-t-view-prices = Prices: { $rub }₽ / { $stars }⭐️ / { $usd }$
+admin-t-view-duration = Duration: { $days } days
+admin-t-view-traffic = Traffic: { $traffic } GB
+
+# Shop
+shop-no-tariffs = 😔 No tariffs available at the moment.
+shop-promo-ask = Have a promo code? Enter it below or click Skip.
+shop-promo-skip = Skip
+shop-promo-invalid = ❌ Invalid promo code. Try again or Skip.
+shop-promo-expired = ❌ Promo code expired.
+shop-promo-limit = ❌ Promo code limit reached.
+shop-promo-applied = ✅ Promo code { $code } applied!
+shop-payment-method-desc = Select payment method:
+shop-pay-card = 💳 Card ({ $price } RUB)
+shop-pay-stars = ⭐️ Telegram Stars ({ $price } Stars)
+shop-pay-btn = 💳 Pay
+shop-order-created = 
+    ✅ Order #{ $id } created.
+    Total: { $price } { $currency }
+shop-payment-not-configured = ❌ This payment method is not configured yet.
+shop-payment-error = ❌ Payment creation error: { $error }
+shop-pay-stars-hint = ☝️ Tap the button above to pay with Stars.
+shop-success = ✅ Payment successful! Order #{ $id } completed.
+shop-error-fulfillment = ⚠️ Payment successful, but delivery failed. Contact support.
+shop-error-not-found = ⚠️ Payment successful, but order not found. Contact support.
+

@@ -450,61 +450,61 @@ async def admin_tariffs_list(callback: types.CallbackQuery, state: FSMContext, s
         curr = f"{int(t.price_rub)}₽/{t.price_stars}⭐️/{t.price_usd}$"
         kb_rows.append([types.InlineKeyboardButton(text=f"{t.name} ({curr})", callback_data=f"t_view_{t.id}")])
     
-    kb_rows.append([types.InlineKeyboardButton(text="➕ Создать тариф", callback_data="t_create")])
+    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("admin-t-create-btn"), callback_data="t_create")])
     kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_menu")])
     
-    await callback.message.edit_text("Список тарифов (Standard Tariffs):", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows))
+    await callback.message.edit_text(l10n.format_value("admin-t-list-title"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows))
 
 @router.callback_query(F.data == "t_create")
 async def t_create_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
     await state.set_state(AdminStates.t_name)
-    await callback.message.edit_text("Введите название тарифа (Name):", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="Cancel", callback_data="admin_tariffs_list")]]))
+    await callback.message.edit_text(l10n.format_value("admin-t-create-name"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-t-create-cancel"), callback_data="admin_tariffs_list")]]))
 
 @router.message(AdminStates.t_name)
-async def t_set_name(message: types.Message, state: FSMContext):
+async def t_set_name(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     await state.update_data(name=message.text)
     await state.set_state(AdminStates.t_price_rub)
-    await message.answer("Цена в рублях (RUB Price, float):")
+    await message.answer(l10n.format_value("admin-t-create-rub"))
 
 @router.message(AdminStates.t_price_rub)
-async def t_set_rub(message: types.Message, state: FSMContext):
+async def t_set_rub(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     try:
         val = float(message.text)
         await state.update_data(rub=val)
         await state.set_state(AdminStates.t_price_stars)
-        await message.answer("Цена в звездах (Stars, int):")
+        await message.answer(l10n.format_value("admin-t-create-stars"))
     except ValueError:
-        await message.answer("Must be a number.")
+        await message.answer(l10n.format_value("admin-t-val-number"))
 
 @router.message(AdminStates.t_price_stars)
-async def t_set_stars(message: types.Message, state: FSMContext):
+async def t_set_stars(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     try:
         val = int(message.text)
         await state.update_data(stars=val)
         await state.set_state(AdminStates.t_price_usd)
-        await message.answer("Цена в долларах (USD, float):")
+        await message.answer(l10n.format_value("admin-t-create-usd"))
     except ValueError:
-        await message.answer("Must be an integer.")
+        await message.answer(l10n.format_value("admin-t-val-int"))
 
 @router.message(AdminStates.t_price_usd)
-async def t_set_usd(message: types.Message, state: FSMContext):
+async def t_set_usd(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     try:
         val = float(message.text)
         await state.update_data(usd=val)
         await state.set_state(AdminStates.t_days)
-        await message.answer("Длительность (Days):")
+        await message.answer(l10n.format_value("admin-t-create-days"))
     except ValueError:
-        await message.answer("Must be a number.")
+        await message.answer(l10n.format_value("admin-t-val-number"))
 
 @router.message(AdminStates.t_days)
-async def t_set_days(message: types.Message, state: FSMContext):
+async def t_set_days(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     try:
         val = int(message.text)
         await state.update_data(days=val)
         await state.set_state(AdminStates.t_traffic)
-        await message.answer("Лимит трафика в ГБ (0 для безлимита):")
+        await message.answer(l10n.format_value("admin-t-create-traffic"))
     except ValueError:
-         await message.answer("Must be an integer.")
+         await message.answer(l10n.format_value("admin-t-val-int"))
 
 @router.message(AdminStates.t_traffic)
 async def t_set_traffic(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
@@ -525,45 +525,43 @@ async def t_set_traffic(message: types.Message, state: FSMContext, session, l10n
         session.add(t)
         await session.commit()
         
-        await message.answer(f"✅ Тариф '{t.name}' создан!", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="Список", callback_data="admin_tariffs_list")]]))
+        await message.answer(l10n.format_value("admin-t-created", {"name": t.name}), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-t-list-btn"), callback_data="admin_tariffs_list")]]))
         await state.clear()
         
     except Exception as e:
         await message.answer(f"Error: {e}")
 
 @router.callback_query(F.data.startswith("t_view_"))
-async def t_view(callback: types.CallbackQuery, state: FSMContext, session):
+async def t_view(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
     tid = int(callback.data.split("_")[2])
     t = await session.get(models.Tariff, tid)
     
     if not t:
-        await callback.answer("Not found")
+        await callback.answer(l10n.format_value("admin-cp-not-found"))
         return
         
     text = (
-        f"📦 **{t.name}**\n"
-        f"RUB: {t.price_rub} ₽\n"
-        f"Stars: {t.price_stars} ⭐️\n"
-        f"USD: {t.price_usd} $\n"
-        f"Duration: {t.duration_days} days\n"
-        f"Traffic: {t.traffic_limit_gb or 'Unlimited'} GB"
+        f"{l10n.format_value('admin-t-view-title', {'name': t.name})}\n"
+        f"{l10n.format_value('admin-t-view-prices', {'rub': t.price_rub, 'stars': t.price_stars, 'usd': t.price_usd})}\n"
+        f"{l10n.format_value('admin-t-view-duration', {'days': t.duration_days})}\n"
+        f"{l10n.format_value('admin-t-view-traffic', {'traffic': t.traffic_limit_gb or 'Unlimited'})}"
     )
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="🗑 Удалить", callback_data=f"t_del_{t.id}")],
-        [types.InlineKeyboardButton(text="◀️ Назад", callback_data="admin_tariffs_list")]
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-delete"), callback_data=f"t_del_{t.id}")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_tariffs_list")]
     ])
     
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
 
 @router.callback_query(F.data.startswith("t_del_"))
-async def t_delete(callback: types.CallbackQuery, session):
+async def t_delete(callback: types.CallbackQuery, session, l10n: FluentLocalization):
     tid = int(callback.data.split("_")[2])
     stmt = delete(models.Tariff).where(models.Tariff.id == tid)
     await session.execute(stmt)
     await session.commit()
-    await callback.answer("Deleted")
+    await callback.answer(l10n.format_value("admin-deleted"))
     # Refresh list
     # Re-call list handler? simpler to just send new msg or edit
-    await callback.message.edit_text("Тариф удален.", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="Список", callback_data="admin_tariffs_list")]]))
+    await callback.message.edit_text(l10n.format_value("admin-deleted"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-t-list-btn"), callback_data="admin_tariffs_list")]]))
 
