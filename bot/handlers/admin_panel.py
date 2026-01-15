@@ -622,7 +622,7 @@ async def t_grant_process(message: types.Message, state: FSMContext, session, l1
              msg_text = l10n.format_value("admin-t-grant-success-full", {
                  "tariff": tariff.name,
                  "user_id": target_user_id,
-                 "username": u.username or "Unknown",
+                 "username": u.username or "No username",
                  "days": tariff.duration_days,
                  "traffic": tariff.traffic_limit_gb or "∞",
                  "link": link
@@ -647,11 +647,7 @@ async def t_grant_process(message: types.Message, state: FSMContext, session, l1
         logger.error("grant_tariff_error", error=str(e))
         await message.answer(l10n.format_value("admin-t-grant-error", {"error": str(e)}))
     
-    # Return to menu? No, just clear state. Or better: show tariff list again.
-    # But t_grant_process is a message handler, so we send message.
-    # Let's add a button to go back.
-    kb = types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-t-list-btn"), callback_data="admin_tariffs_list")]])
-    await message.answer("---", reply_markup=kb)
+    await cmd_admin(message, state, l10n)
 
 @router.callback_query(F.data.startswith("t_del_"))
 async def t_delete(callback: types.CallbackQuery, session, l10n: FluentLocalization):
