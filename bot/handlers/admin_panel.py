@@ -634,11 +634,106 @@ async def t_view(callback: types.CallbackQuery, state: FSMContext, session, l10n
     )
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-t-btn-grant"), callback_data=f"t_grant_{t.id}")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-delete"), callback_data=f"t_del_{t.id}")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_tariffs_list")]
     ])
     
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+
+@router.callback_query(F.data.startswith("t_grant_"))
+async def t_grant_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    tid = int(callback.data.split("_")[2])
+    await state.update_data(grant_tariff_id=tid)
+    await state.set_state(AdminStates.t_grant_id)
+    await callback.message.answer(l10n.format_value("admin-t-grant-ask"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-cancel"), callback_data="admin_tariffs_list")]]))
+    await callback.answer()
+
+@router.message(AdminStates.t_grant_id)
+async def t_grant_process(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    try:
+        data = await state.get_data()
+        tid = data['grant_tariff_id']
+        target_user_id = int(message.text.strip())
+        
+        # Check user exists, create if not
+        u = await session.get(models.User, target_user_id)
+        if not u:
+            # Create user placeholder
+            u = models.User(id=target_user_id, language_code="en") # Default EN
+            session.add(u)
+            await session.flush()
+
+        tariff = await session.get(models.Tariff, tid)
+        if not tariff:
+            await message.answer("Tariff not found")
+            return
+
+        # Create paid order manually
+        from bot.services.orders import create_order, fulfill_order
+        from bot.services.remnawave import api
+        
+        # Create order with 0 price (gift)
+        order = await create_order(
+            user_id=target_user_id,
+            tariff_id=tid,
+            amount=0.0,
+            provider=models.PaymentProvider.MANUAL,
+            session=session
+        )
+        
+        order.status = models.OrderStatus.PAID
+        order.invoice_id = f"manual_grant_{message.from_user.id}_{datetime.utcnow().timestamp()}"
+        await session.commit()
+        
+        # Fulfill
+        success = await fulfill_order(order.id, session)
+        
+        if success:
+             # Refresh user to get remnawave_uuid
+             await session.refresh(u)
+             
+             # Fetch sub link
+             link = "N/A"
+             if u.remnawave_uuid:
+                 try:
+                     rw_user = await api.get_user(u.remnawave_uuid)
+                     link = rw_user.get('subscriptionUrl') or rw_user.get('subUrl') or "Link not found in API"
+                 except Exception as e:
+                     link = f"Error fetching link: {e}"
+             
+             msg_text = l10n.format_value("admin-t-grant-success-full", {
+                 "tariff": tariff.name,
+                 "user_id": target_user_id,
+                 "username": u.username or "Unknown",
+                 "days": tariff.duration_days,
+                 "traffic": tariff.traffic_limit_gb or "∞",
+                 "link": link
+             })
+             
+             await message.answer(msg_text, parse_mode="Markdown")
+             
+             # Notify user
+             try:
+                 await message.bot.send_message(target_user_id, f"🎁 You have been granted a subscription: {tariff.name}!")
+             except:
+                 pass
+        else:
+             await message.answer(l10n.format_value("admin-t-grant-error", {"error": "Fulfillment failed"}))
+             
+        await state.clear()
+        
+    except ValueError:
+        await message.answer(l10n.format_value("admin-t-val-int"))
+    except Exception as e:
+        logger.error("grant_tariff_error", error=str(e))
+        await message.answer(l10n.format_value("admin-t-grant-error", {"error": str(e)}))
+    
+    # Return to menu? No, just clear state. Or better: show tariff list again.
+    # But t_grant_process is a message handler, so we send message.
+    # Let's add a button to go back.
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-t-list-btn"), callback_data="admin_tariffs_list")]])
+    await message.answer("---", reply_markup=kb)
 
 @router.callback_query(F.data.startswith("t_del_"))
 async def t_delete(callback: types.CallbackQuery, session, l10n: FluentLocalization):
@@ -647,7 +742,5 @@ async def t_delete(callback: types.CallbackQuery, session, l10n: FluentLocalizat
     await session.execute(stmt)
     await session.commit()
     await callback.answer(l10n.format_value("admin-deleted"))
-    # Refresh list
-    # Re-call list handler? simpler to just send new msg or edit
     await callback.message.edit_text(l10n.format_value("admin-deleted"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-t-list-btn"), callback_data="admin_tariffs_list")]]))
 
