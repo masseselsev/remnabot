@@ -101,6 +101,7 @@ bot-unknown-command =
 # Admin General
 admin-title = 🔧 **Админ-панель**
     Выберите раздел:
+admin-btn-tariffs = 📦 Тарифы
 admin-btn-trial = 🎁 Настройки Триала
 admin-btn-cp = 💎 Спецтарифы
 admin-btn-exit = ❌ Выйти

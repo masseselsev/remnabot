@@ -99,6 +99,7 @@ bot-unknown-command =
 # Admin General
 admin-title = 🔧 **Admin Panel**
     Select a section:
+admin-btn-tariffs = 📦 Tariffs
 admin-btn-trial = 🎁 Trial Settings
 admin-btn-cp = 💎 Custom Plans
 admin-btn-exit = ❌ Exit
