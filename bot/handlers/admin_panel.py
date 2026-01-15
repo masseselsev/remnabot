@@ -672,25 +672,21 @@ from sqlalchemy.exc import IntegrityError
 async def t_delete(callback: types.CallbackQuery, session, l10n: FluentLocalization):
     tid = int(callback.data.split("_")[2])
     try:
+        # 1. CASCADE: Delete associated orders first
+        # USER REQUESTED: "if tariff is deleted, orders should be too"
+        del_orders_stmt = delete(models.Order).where(models.Order.tariff_id == tid)
+        await session.execute(del_orders_stmt)
+        
+        # 2. Delete tariff
         stmt = delete(models.Tariff).where(models.Tariff.id == tid)
         await session.execute(stmt)
         await session.commit()
-        await callback.answer(l10n.format_value("admin-t-deleted", {"name": f"Check logs or list"})) # Helper msg
+        
+        await callback.answer(l10n.format_value("admin-t-deleted", {"name": "Deleted"}))
         # Refresh list
         await callback.message.delete()
         await cmd_tariffs_list(callback.message, None, session, l10n)
         
-    except IntegrityError:
-        await session.rollback()
-        # Fallback: Archive
-        t = await session.get(models.Tariff, tid)
-        if t:
-            t.is_active = False
-            await session.commit()
-            await callback.answer(l10n.format_value("admin-t-archived"), show_alert=True)
-            # Go back to list
-            await callback.message.delete()
-            await cmd_tariffs_list(callback.message, None, session, l10n)
     except Exception as e:
         await session.rollback()
         await callback.answer(f"Error: {e}", show_alert=True)
