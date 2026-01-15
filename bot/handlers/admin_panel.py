@@ -666,12 +666,31 @@ async def t_grant_process(message: types.Message, state: FSMContext, session, l1
     
     await cmd_admin(message, state, l10n)
 
+from sqlalchemy.exc import IntegrityError
+
 @router.callback_query(F.data.startswith("t_del_"))
 async def t_delete(callback: types.CallbackQuery, session, l10n: FluentLocalization):
     tid = int(callback.data.split("_")[2])
-    stmt = delete(models.Tariff).where(models.Tariff.id == tid)
-    await session.execute(stmt)
-    await session.commit()
-    await callback.answer(l10n.format_value("admin-deleted"))
-    await callback.message.edit_text(l10n.format_value("admin-deleted"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-t-list-btn"), callback_data="admin_tariffs_list")]]))
-
+    try:
+        stmt = delete(models.Tariff).where(models.Tariff.id == tid)
+        await session.execute(stmt)
+        await session.commit()
+        await callback.answer(l10n.format_value("admin-t-deleted", {"name": f"Check logs or list"})) # Helper msg
+        # Refresh list
+        await callback.message.delete()
+        await cmd_tariffs_list(callback.message, None, session, l10n)
+        
+    except IntegrityError:
+        await session.rollback()
+        # Fallback: Archive
+        t = await session.get(models.Tariff, tid)
+        if t:
+            t.is_active = False
+            await session.commit()
+            await callback.answer(l10n.format_value("admin-t-archived"), show_alert=True)
+            # Go back to list
+            await callback.message.delete()
+            await cmd_tariffs_list(callback.message, None, session, l10n)
+    except Exception as e:
+        await session.rollback()
+        await callback.answer(f"Error: {e}", show_alert=True)
