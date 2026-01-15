@@ -43,8 +43,9 @@ class Tariff(Base):
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     
-    price: Mapped[float] = mapped_column(Float)
-    currency: Mapped[str] = mapped_column(String(10), default="RUB")
+    price_rub: Mapped[float] = mapped_column(Float, default=0.0)
+    price_stars: Mapped[int] = mapped_column(Integer, default=0)
+    price_usd: Mapped[float] = mapped_column(Float, default=0.0)
     
     duration_days: Mapped[int] = mapped_column(Integer)
     traffic_limit_gb: Mapped[int | None] = mapped_column(Integer, nullable=True) # None = Unlimited
