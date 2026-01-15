@@ -614,8 +614,8 @@ async def t_grant_process(message: types.Message, state: FSMContext, session, l1
              if u.remnawave_uuid:
                  try:
                      rw_user = await api.get_user(u.remnawave_uuid)
-                     logger.info("remnawave_user_dump", user_data=rw_user)
-                     link = rw_user.get('subscriptionUrl') or rw_user.get('sub_url') or rw_user.get('subscription_url') or "Link not found in API"
+                     user_data = rw_user.get('response', rw_user)
+                     link = user_data.get('subscriptionUrl') or user_data.get('subUrl') or user_data.get('subscription_url') or "Link not found in API"
                  except Exception as e:
                      link = f"Error fetching link: {e}"
              
