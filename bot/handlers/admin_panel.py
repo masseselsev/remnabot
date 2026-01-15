@@ -682,7 +682,6 @@ async def t_grant_process(message: types.Message, state: FSMContext, session, l1
             session=session
         )
         
-        order.status = models.OrderStatus.PAID
         order.invoice_id = f"manual_grant_{message.from_user.id}_{datetime.utcnow().timestamp()}"
         await session.commit()
         
