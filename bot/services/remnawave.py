@@ -140,6 +140,9 @@ class RemnawaveAPI:
         return await self.update_user(uuid, {"dataLimit": new_limit, "trafficLimitStrategy": "NO_RESET"})
 
     async def add_user_to_squad(self, user_uuid: str, squad_uuid: str):
-        return await self._request("POST", f"internal-squads/{squad_uuid}/bulk-actions/add-users", data={"users": [user_uuid]})
+        # FIXME: Previous implementation caused bulk assignment to ALL users.
+        # Disabling until correct API endpoint is confirmed.
+        logger.warning("add_user_to_squad_disabled", user_uuid=user_uuid, squad_uuid=squad_uuid)
+        return {}
 
 api = RemnawaveAPI()
