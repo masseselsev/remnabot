@@ -685,8 +685,11 @@ async def t_grant_process(message: types.Message, state: FSMContext, session, l1
         order.invoice_id = f"manual_grant_{message.from_user.id}_{datetime.utcnow().timestamp()}"
         await session.commit()
         
+        logger.info("grant_debug_pre_fulfill", order_id=order.id, status=order.status)
+        
         # Fulfill
         success = await fulfill_order(order.id, session)
+        logger.info("grant_debug_post_fulfill", success=success)
         
         if success:
              # Refresh user to get remnawave_uuid
