@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import structlog
 
 logger = structlog.get_logger()
+print("DEBUG: ADMIN MODULE LOADED - VERSION 888")
 
 router = Router()
 
