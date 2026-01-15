@@ -5,6 +5,9 @@ from bot.database import models
 from bot.states import ShopState
 from fluent.runtime import FluentLocalization
 from datetime import datetime
+import structlog
+
+logger = structlog.get_logger()
 
 router = Router()
 
