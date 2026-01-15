@@ -721,7 +721,8 @@ async def t_grant_process(message: types.Message, state: FSMContext, session, l1
              except:
                  pass
         else:
-             await message.answer(l10n.format_value("admin-t-grant-error", {"error": "Fulfillment failed"}))
+             debug_info = f"UID={u.id}, UUID={u.remnawave_uuid}, OrdStat={order.status}"
+             await message.answer(l10n.format_value("admin-t-grant-error", {"error": f"Fulfillment failed. {debug_info}"}))
              
         await state.clear()
         
