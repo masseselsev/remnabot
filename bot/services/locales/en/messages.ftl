@@ -150,7 +150,15 @@ admin-t-view-duration = Duration: { $days } days
 admin-t-view-traffic = Traffic: { $traffic } GB
 admin-t-btn-grant = 🎁 Give to User
 admin-t-grant-ask = Enter user's Telegram ID (numeric):
-admin-t-grant-success = ✅ Tariff **{ $tariff }** granted to user { $user }!
+admin-t-grant-success-full = 
+    ✅ Tariff **{ $tariff }** granted!
+    
+    👤 User: `{ $user_id }` ({ $username })
+    📅 Duration: { $days } days
+    📊 Traffic: { $traffic } GB
+    
+    🔗 Subscription Link:
+    `{ $link }`
 admin-t-grant-error = ❌ Failed to grant: { $error }
 admin-t-grant-user-not-found = ❌ User with ID { $id } not found in bot database. Ask them to /start first.
 
