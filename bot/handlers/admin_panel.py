@@ -12,7 +12,6 @@ from datetime import datetime, timedelta
 import structlog
 
 logger = structlog.get_logger()
-print("DEBUG: ADMIN MODULE LOADED - VERSION 888")
 
 router = Router()
 
@@ -603,11 +602,8 @@ async def t_grant_process(message: types.Message, state: FSMContext, session, l1
         order.invoice_id = f"manual_grant_{message.from_user.id}_{datetime.utcnow().timestamp()}"
         await session.commit()
         
-        logger.info("grant_debug_pre_fulfill", order_id=order.id, status=order.status)
-        
         # Fulfill
         success = await fulfill_order(order.id, session)
-        logger.info("grant_debug_post_fulfill", success=success)
         
         if success:
              # Refresh user to get remnawave_uuid
@@ -618,7 +614,8 @@ async def t_grant_process(message: types.Message, state: FSMContext, session, l1
              if u.remnawave_uuid:
                  try:
                      rw_user = await api.get_user(u.remnawave_uuid)
-                     link = rw_user.get('subscriptionUrl') or rw_user.get('subUrl') or "Link not found in API"
+                     logger.info("remnawave_user_dump", user_data=rw_user)
+                     link = rw_user.get('subscriptionUrl') or rw_user.get('sub_url') or rw_user.get('subscription_url') or "Link not found in API"
                  except Exception as e:
                      link = f"Error fetching link: {e}"
              
@@ -637,10 +634,10 @@ async def t_grant_process(message: types.Message, state: FSMContext, session, l1
              try:
                  await message.bot.send_message(target_user_id, f"🎁 You have been granted a subscription: {tariff.name}!")
              except:
+                 # User blocked bot or not started
                  pass
         else:
-             debug_info = f"UID={u.id}, UUID={u.remnawave_uuid}, OrdStat={order.status}"
-             await message.answer(l10n.format_value("admin-t-grant-error", {"error": f"Fulfillment failed. {debug_info}"}))
+             await message.answer(l10n.format_value("admin-t-grant-error", {"error": "Fulfillment failed"}))
              
         await state.clear()
         

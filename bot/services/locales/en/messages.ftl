@@ -158,7 +158,7 @@ admin-t-grant-success-full =
     📊 Traffic: { $traffic } GB
     
     🔗 Subscription Link:
-    `{ $link }`
+    { $link }
 admin-t-grant-error = ❌ [DEBUG] Failed to grant: { $error }
 admin-t-grant-user-not-found = ❌ User with ID { $id } not found in bot database. Ask them to /start first.
 
