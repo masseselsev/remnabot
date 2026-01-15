@@ -49,6 +49,7 @@ class Tariff(Base):
     
     duration_days: Mapped[int] = mapped_column(Integer)
     traffic_limit_gb: Mapped[int | None] = mapped_column(Integer, nullable=True) # None = Unlimited
+    squad_uuid: Mapped[str | None] = mapped_column(String(100), nullable=True)
     
     is_trial: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
