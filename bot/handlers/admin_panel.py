@@ -41,6 +41,7 @@ class AdminStates(StatesGroup):
     t_price_usd = State()
     t_days = State()
     t_traffic = State()
+    t_grant_id = State()
 
 async def get_main_kb(l10n: FluentLocalization):
     return types.InlineKeyboardMarkup(inline_keyboard=[

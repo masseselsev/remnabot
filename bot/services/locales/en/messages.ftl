@@ -148,6 +148,11 @@ admin-t-view-title = 📦 **{ $name }**
 admin-t-view-prices = Prices: { $rub }₽ / { $stars }⭐️ / { $usd }$
 admin-t-view-duration = Duration: { $days } days
 admin-t-view-traffic = Traffic: { $traffic } GB
+admin-t-btn-grant = 🎁 Give to User
+admin-t-grant-ask = Enter user's Telegram ID (numeric):
+admin-t-grant-success = ✅ Tariff **{ $tariff }** granted to user { $user }!
+admin-t-grant-error = ❌ Failed to grant: { $error }
+admin-t-grant-user-not-found = ❌ User with ID { $id } not found in bot database. Ask them to /start first.
 
 # Shop
 shop-no-tariffs = 😔 No tariffs available at the moment.

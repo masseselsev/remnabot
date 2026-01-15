@@ -150,6 +150,11 @@ admin-t-view-title = 📦 **{ $name }**
 admin-t-view-prices = Цены: { $rub }₽ / { $stars }⭐️ / { $usd }$
 admin-t-view-duration = Длительность: { $days } дн.
 admin-t-view-traffic = Трафик: { $traffic } ГБ
+admin-t-btn-grant = 🎁 Выдать пользователю
+admin-t-grant-ask = Введите Telegram ID пользователя (цифры):
+admin-t-grant-success = ✅ Тариф **{ $tariff }** выдан пользователю { $user }!
+admin-t-grant-error = ❌ Ошибка выдачи: { $error }
+admin-t-grant-user-not-found = ❌ Пользователь с ID { $id } не найден в базе бота. Попросите его сначала нажать /start.
 
 # Shop
 shop-no-tariffs = 😔 Нет доступных тарифов.
