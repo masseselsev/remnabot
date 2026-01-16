@@ -102,7 +102,7 @@ async def trial_settings_menu(callback: types.CallbackQuery, state: FSMContext, 
              s = squad_data.get('response', squad_data)
              
              name = s.get('slug') or s.get('name') or "Unnamed"
-             squad_display = f"{name}"
+             squad_display = f"{name} ({squad_val})"
         except Exception:
              pass
 
@@ -292,7 +292,7 @@ async def cp_view(callback: types.CallbackQuery, state: FSMContext, session, l10
              s = squad_data.get('response', squad_data)
              
              name = s.get('slug') or s.get('name') or "Unnamed"
-             squad_display = f"{name}"
+             squad_display = f"{name} ({tariff.squad_uuid})"
         except Exception:
              pass
 
@@ -594,7 +594,7 @@ async def t_view(callback: types.CallbackQuery, state: FSMContext, session, l10n
              s = squad_data.get('response', squad_data)
              
              name = s.get('slug') or s.get('name') or "Unnamed"
-             squad_display = f"{name}"
+             squad_display = f"{name} ({t.squad_uuid})"
         except Exception:
              pass
         
