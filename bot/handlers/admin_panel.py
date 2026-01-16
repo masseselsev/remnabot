@@ -275,17 +275,11 @@ async def cp_view(callback: types.CallbackQuery, state: FSMContext, session, l10
     squad_display = tariff.squad_uuid or "N/A"
     if tariff.squad_uuid and tariff.squad_uuid != "0":
         try:
-             squads_resp = await api.get_squads()
-             candidates = []
-             if isinstance(squads_resp, list): candidates = squads_resp
-             elif isinstance(squads_resp, dict):
-                 candidates = squads_resp.get('response') or squads_resp.get('internalSquads') or []
-
-             for s in candidates:
-                 if s.get('uuid') == tariff.squad_uuid:
-                     name = s.get('slug') or s.get('name') or "Unnamed"
-                     squad_display = f"{name}"
-                     break
+             squad_data = await api.get_squad(tariff.squad_uuid)
+             s = squad_data.get('response', squad_data)
+             
+             name = s.get('slug') or s.get('name') or "Unnamed"
+             squad_display = f"{name}"
         except Exception:
              pass
 
@@ -582,17 +576,12 @@ async def t_view(callback: types.CallbackQuery, state: FSMContext, session, l10n
     squad_display = t.squad_uuid or "Default"
     if t.squad_uuid and t.squad_uuid != "0":
         try:
-             squads_resp = await api.get_squads()
-             candidates = []
-             if isinstance(squads_resp, list): candidates = squads_resp
-             elif isinstance(squads_resp, dict):
-                 candidates = squads_resp.get('response') or squads_resp.get('internalSquads') or []
-
-             for s in candidates:
-                 if s.get('uuid') == t.squad_uuid:
-                     name = s.get('slug') or s.get('name') or "Unnamed"
-                     squad_display = f"{name}"
-                     break
+             squad_data = await api.get_squad(t.squad_uuid)
+             # Handle response wrapper if present
+             s = squad_data.get('response', squad_data)
+             
+             name = s.get('slug') or s.get('name') or "Unnamed"
+             squad_display = f"{name}"
         except Exception:
              pass
         

@@ -130,6 +130,9 @@ class RemnawaveAPI:
     async def get_squads(self):
         return await self._request("GET", "internal-squads")
 
+    async def get_squad(self, uuid: str):
+        return await self._request("GET", f"internal-squads/{uuid}")
+
     async def add_traffic(self, uuid: str, gigabytes: int):
         user = await self.get_user(uuid)
         current_limit = user.get('dataLimit', 0) or 0
