@@ -2,7 +2,7 @@ start-welcome = Welcome, { $name }!
 start-active-sub = 
     ℹ️ <b>Active Subscription</b>
     
-    📦 Tariff: <b>{ $tariff }</b>
+    📦 Plan: <b>{ $tariff }</b>
     📅 Expires: { $date }
     
     🔗 <b>Link:</b>
@@ -23,8 +23,8 @@ subscription-none = ❌ No active subscription
 btn-buy = 🛒 Buy Subscription
 btn-topup = 💳 Top up Balance
 btn-back = 🔙 Back
-shop-select-tariff = 📦 Select a tariff:
-profile-tariff = 📦 Tariff: { $name }
+shop-select-tariff = 📦 Select a plan:
+profile-tariff = 📦 Plan: { $name }
 profile-traffic = 📊 Traffic: { $used } / { $limit } GB ({ $percent }%)
 trial-activated = ✅ Trial activated!
 trial-active = ✅ Your trial is active!
@@ -107,7 +107,7 @@ bot-unknown-command =
 # Admin General
 admin-title = 🔧 **Admin Panel**
     Select a section:
-admin-btn-tariffs = 📦 Tariffs
+admin-btn-tariffs = 📦 Plans
 admin-btn-trial = 🎁 Trial Settings
 admin-btn-cp = 💎 Custom Plans
 admin-btn-exit = ❌ Exit
@@ -139,9 +139,9 @@ admin-error = ❌ Error: { $error }
 admin-month-short = mo
 
 # Admin Standard Tariffs
-admin-t-list-title = 📦 **Standard Tariffs:**
-admin-t-create-btn = ➕ Create Tariff
-admin-t-create-name = Enter tariff name:
+admin-t-list-title = 📦 **Standard Plans:**
+admin-t-create-btn = ➕ Create Plan
+admin-t-create-name = Enter plan name:
 admin-t-create-cancel = Cancel
 admin-t-create-rub = Enter price in RUB (float):
 admin-t-create-stars = Enter price in Stars (int):
@@ -151,8 +151,8 @@ admin-t-create-traffic = Enter traffic limit in GB (0 for unlimited):
 admin-t-ask-squad = Enter Squad UUID (or 0 for default):
 admin-t-val-number = Must be a number.
 admin-t-val-int = Must be an integer.
-admin-t-created = ✅ Tariff **{ $name }** created!
-admin-t-deleted = 🗑 Tariff deleted.
+admin-t-created = ✅ Plan **{ $name }** created!
+admin-t-deleted = 🗑 Plan deleted.
 admin-t-archived = 📁 Tariff archived (cannot delete used tariff).
 admin-t-list-btn = List
 admin-t-view-title = 📦 **{ $name }**
@@ -163,7 +163,7 @@ admin-t-view-traffic = 📊 Traffic Limit: { $traffic } GB
 admin-t-btn-grant = 🎁 Give to User
 admin-t-grant-ask = Enter user's Telegram ID (numeric):
 admin-t-grant-success-full = 
-    ✅ Tariff <b>{ $tariff }</b> granted!
+    ✅ Plan <b>{ $tariff }</b> granted!
     
     👤 User: { $user_id } { $username }
     📅 Duration: { $days } days
@@ -175,7 +175,7 @@ admin-t-grant-error = ❌ [DEBUG] Failed to grant: { $error }
 admin-t-grant-user-not-found = ❌ User with ID { $id } not found in bot database. Ask them to /start first.
 
 # Shop
-shop-no-tariffs = 😔 No tariffs available at the moment.
+shop-no-tariffs = 😔 No plans available at the moment.
 shop-promo-ask = Have a promo code? Enter it below or click Skip.
 shop-promo-skip = Skip
 shop-promo-invalid = ❌ Invalid promo code. Try again or Skip.
