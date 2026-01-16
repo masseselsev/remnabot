@@ -39,6 +39,59 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
     
     await message.answer(text, reply_markup=keyboard)
 
+    # Check for active subscription (notify newly granted users)
+    if user.remnawave_uuid:
+        try:
+             from bot.services.remnawave import api
+             from html import escape
+             from dateutil import parser
+             from datetime import datetime, timezone, timedelta
+             
+             # Get API User
+             rw_user = await api.get_user(user.remnawave_uuid)
+             data = rw_user.get('response', rw_user)
+             
+             if not data: return 
+
+             # Check Expiry
+             expire_at = data.get('expireAt')
+             is_active = False
+             date_str = "Unlimited"
+             
+             if expire_at:
+                 dt = parser.isoparse(expire_at)
+                 if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+                 now_utc = datetime.now(timezone.utc)
+                 
+                 if dt > now_utc:
+                     is_active = True
+                     # Format Date
+                     msk_tz = timezone(timedelta(hours=3))
+                     date_str = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
+             
+             if is_active:
+                 # Get Tariff Name from DB (Last Paid Order)
+                 stmt_order = select(models.Order).options(selectinload(models.Order.tariff)).where(
+                    models.Order.user_id == user.id, 
+                    models.Order.status == models.OrderStatus.PAID
+                 ).order_by(models.Order.created_at.desc()).limit(1)
+                 result_order = await session.execute(stmt_order)
+                 last_order = result_order.scalar_one_or_none()
+                 tariff_name = last_order.tariff.name if last_order and last_order.tariff else "Unknown"
+                 
+                 # Prepare Message
+                 link = data.get('subscriptionUrl') or f"{config.remnawave_url}/sub/{user.remnawave_uuid}"
+                 
+                 msg = l10n.format_value("start-active-sub", {
+                     "tariff": escape(tariff_name),
+                     "date": date_str,
+                     "link": link
+                 })
+                 await message.answer(msg, parse_mode="HTML")
+                 
+        except Exception:
+            pass
+
 @router.message(F.text == "🎁 Try for free")
 @router.message(F.text == "🎁 Попробовать бесплатно")
 async def process_trial(message: types.Message, session, l10n: FluentLocalization):

@@ -1,4 +1,12 @@
 start-welcome = Welcome, { $name }!
+start-active-sub = 
+    ℹ️ <b>Active Subscription</b>
+    
+    📦 Tariff: <b>{ $tariff }</b>
+    📅 Expires: { $date }
+    
+    🔗 <b>Link:</b>
+    { $link }
 
 btn-trial = 🎁 Try for free
 btn-shop = 🛒 Buy VPN
