@@ -271,9 +271,27 @@ async def cp_view(callback: types.CallbackQuery, state: FSMContext, session, l10
 
     dur_display = "∞" if tariff.duration_months == 0 else f"{tariff.duration_months} {l10n.format_value('admin-month-short')}"
 
+    # Resolve Squad Name
+    squad_display = tariff.squad_uuid or "N/A"
+    if tariff.squad_uuid and tariff.squad_uuid != "0":
+        try:
+             squads_resp = await api.get_squads()
+             candidates = []
+             if isinstance(squads_resp, list): candidates = squads_resp
+             elif isinstance(squads_resp, dict):
+                 candidates = squads_resp.get('response') or squads_resp.get('internalSquads') or []
+
+             for s in candidates:
+                 if s.get('uuid') == tariff.squad_uuid:
+                     name = s.get('slug') or s.get('name') or "Unnamed"
+                     squad_display = f"{name}"
+                     break
+        except Exception:
+             pass
+
     text = (
         f"{l10n.format_value('admin-cp-view-title', {'name': tariff.name})}\n\n"
-        f"{l10n.format_value('admin-cp-view-squad', {'squad': tariff.squad_uuid})}\n"
+        f"{l10n.format_value('admin-cp-view-squad', {'squad': squad_display})}\n"
         f"{l10n.format_value('admin-cp-view-traffic', {'traffic': tariff.traffic_gb})}\n"
         f"{l10n.format_value('admin-cp-view-duration', {'duration': dur_display})}\n"
         f"{l10n.format_value('admin-cp-view-tag', {'tag': tariff.tag or 'None'})}"
