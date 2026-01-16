@@ -93,11 +93,24 @@ async def back_to_menu(callback: types.CallbackQuery, state: FSMContext, l10n: F
 async def trial_settings_menu(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
     settings = await SettingsService.get_trial_settings()
     
+    # Resolve Squad Name
+    squad_val = settings['squad_uuid']
+    squad_display = squad_val
+    if squad_val and squad_val != "0" and squad_val != "None":
+        try:
+             squad_data = await api.get_squad(squad_val)
+             s = squad_data.get('response', squad_data)
+             
+             name = s.get('slug') or s.get('name') or "Unnamed"
+             squad_display = f"{name}"
+        except Exception:
+             pass
+
     text = f"{l10n.format_value('admin-trial-title')}\n\n" + \
            l10n.format_value("admin-trial-info", {
                "days": settings['days'],
                "traffic": settings['traffic'],
-               "squad": settings['squad_uuid']
+               "squad": squad_display
            })
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
