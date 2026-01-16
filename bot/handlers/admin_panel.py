@@ -559,12 +559,30 @@ async def t_view(callback: types.CallbackQuery, state: FSMContext, session, l10n
     if not t:
         await callback.answer(l10n.format_value("admin-cp-not-found"))
         return
+    
+    # Resolve Squad Name
+    squad_display = t.squad_uuid or "Default"
+    if t.squad_uuid and t.squad_uuid != "0":
+        try:
+             squads_resp = await api.get_squads()
+             candidates = []
+             if isinstance(squads_resp, list): candidates = squads_resp
+             elif isinstance(squads_resp, dict):
+                 candidates = squads_resp.get('response') or squads_resp.get('internalSquads') or []
+
+             for s in candidates:
+                 if s.get('uuid') == t.squad_uuid:
+                     name = s.get('slug') or s.get('name') or "Unnamed"
+                     squad_display = f"{name}"
+                     break
+        except Exception:
+             pass
         
     text = (
         f"{l10n.format_value('admin-t-view-title', {'name': t.name})}\n"
         f"{l10n.format_value('admin-t-view-prices', {'rub': t.price_rub, 'stars': t.price_stars, 'usd': t.price_usd})}\n"
         f"{l10n.format_value('admin-t-view-duration', {'days': t.duration_days})}\n"
-        f"{l10n.format_value('admin-t-view-squad', {'squad': t.squad_uuid or 'Default'})}\n"
+        f"{l10n.format_value('admin-t-view-squad', {'squad': squad_display})}\n"
         f"{l10n.format_value('admin-t-view-traffic', {'traffic': t.traffic_limit_gb or 'Unlimited'})}"
     )
     
