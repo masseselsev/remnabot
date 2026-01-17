@@ -20,14 +20,7 @@ A Telegram bot for selling VPN subscriptions tailored for [Remnawave](https://re
 ### Admin Commands
 > Note: Commands execute only for users listed in `ADMIN_IDS` in `.env`.
 
-- `/add_tariff NAME PRICE DAYS TRAFFIC_GB`
-  - Example: `/add_tariff Premium 199 30 0` (0 = Unlimited traffic)
-- `/add_trial DAYS TRAFFIC_GB`
-  - Example: `/add_trial 3 1` (3 days, 1 GB limit)
-- `/add_promo CODE VALUE IS_PERCENT(1/0) MAX_USES`
-  - Example: `/add_promo START50 50 1 100` (Code START50, 50% off, 100 uses)
-  - Example: `/add_promo MINUS100 100 0 1` (Code MINUS100, 100 RUB off, 1 use)
-- `/support_message USER_ID MESSAGE` - Reply to a user's support ticket.
+- `/admin` - Open the Admin Panel to manage plans, users, and settings via UI buttons.
 
 ### Installation & Deployment
 
@@ -88,14 +81,7 @@ crontab -e
 ### Команды Администратора
 > Примечание: Команды работают только для пользователей, указанных в `ADMIN_IDS` в файле `.env`.
 
-- `/add_tariff ИМЯ ЦЕНА ДНИ ТРАФИК_ГБ`
-  - Пример: `/add_tariff Premium 199 30 0` (0 = Безлимитный трафик)
-- `/add_trial ДНИ ТРАФИК_ГБ`
-  - Пример: `/add_trial 3 1` (3 дня, лимит 1 ГБ)
-- `/add_promo КОД ЗНАЧЕНИЕ ЭТО_ПРОЦЕНТ(1/0) КОЛ_ВО`
-  - Пример: `/add_promo START50 50 1 100` (Код START50, скидка 50%, 100 активаций)
-  - Пример: `/add_promo MINUS100 100 0 1` (Код MINUS100, скидка 100 RUB, 1 активация)
-- `/support_message USER_ID MESSAGE` - Ответить пользователю в техподдержку.
+- `/admin` - Открыть Админ-панель для управления тарифами, пользователями и настройками через визуальное меню.
 
 ### Установка и Деплой
 

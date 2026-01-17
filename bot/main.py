@@ -3,7 +3,7 @@ import structlog
 from aiogram import Bot, Dispatcher
 from bot.config import config
 from bot.database.core import init_db
-from bot.handlers import user, admin, shop, support, admin_panel, fallback
+from bot.handlers import user, shop, support, admin_panel, fallback
 from bot.middlewares.i18n import I18nMiddleware
 from bot.middlewares.db import DbSessionMiddleware
 from bot.middlewares.logging import StructLoggingMiddleware
@@ -33,7 +33,7 @@ async def main():
     dp.include_router(support.router)
     dp.include_router(user.router)
     dp.include_router(shop.router)
-    dp.include_router(admin.router)
+    # dp.include_router(admin.router) # Deprecated
     dp.include_router(admin_panel.router)
     dp.include_router(fallback.router)
 
