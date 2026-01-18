@@ -272,8 +272,23 @@ async def process_trial(message: types.Message, session, l10n: FluentLocalizatio
     tariff = result.scalar_one_or_none()
     
     if not tariff:
-        await message.answer("😔 No trial available currently.")
-        return
+        # Auto-create fallback if trial tariff is missing but logic requires it
+        from bot.services.settings import SettingsService
+        settings = await SettingsService.get_trial_settings()
+        
+        tariff = models.Tariff(
+            name="Free Trial",
+            price_rub=0.0,
+            price_stars=0,
+            price_usd=0.0,
+            duration_days=settings['days'],
+            traffic_limit_gb=int(settings['traffic']),
+            squad_uuid=settings['squad_uuid'] if settings['squad_uuid'] not in ["0", "None"] else None,
+            is_trial=True,
+            is_active=True
+        )
+        session.add(tariff)
+        await session.commit()
 
     # Create dummy order and fulfill
     from bot.services.orders import create_order, fulfill_order
