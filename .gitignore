@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 logs/
 .DS_Store
+
+# Logs
+log_dump.txt
+*.log
