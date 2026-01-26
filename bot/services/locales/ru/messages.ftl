@@ -97,7 +97,7 @@ admin-cp-grant-success =
     ✅ **Пользователь создан!**
     
     👤 Username: `{ $username }`
-    🔗 Link: { $link }
+    🔗 Link: `{ $link }`
     📊 Traffic: { $traffic } GB/mo
     ⏳ Expire: { $expire }
 admin-cp-btn-to-menu = 🔙 В меню
