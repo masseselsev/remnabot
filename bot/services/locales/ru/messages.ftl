@@ -11,11 +11,30 @@ start-active-sub =
 btn-trial = 🎁 Попробовать бесплатно
 btn-shop = 🛒 Купить VPN
 btn-profile = 👤 Профиль
+btn-devices = 📱 Мои устройства
+btn-yes = ✅ Да
+btn-no = ❌ Нет
 btn-support = 🆘 Поддержка
 
 profile-title = 👤 Ваш профиль
-profile-id = ID: { $id }
+profile-id = 👤 Tg ID: { $id }
 profile-status = Статус: { $status }
+
+# Shared components
+profile-expiry = 📅 Активна до { $date }
+profile-traffic = 📊 Трафик: { $used } / { $limit } GB ({ $percent }%) { $bar }
+profile-link = 🔗 Ссылка: { $link }
+
+profile-additional-accounts = 
+    <b>──────────────</b>
+    📂 <b>Специальные аккаунты:</b>
+profile-account-item = 
+    👤 <b>{ $username }</b>
+    { $expiry }
+    { $traffic }
+    { $link }
+
+profile-link = 🔗 Ссылка: { $link }
 
 subscription-active = ✅ Активна до { $date }
 subscription-none = ❌ Нет активной подписки
@@ -36,6 +55,30 @@ trial-failed = ❌ Не удалось активировать пробный �
 trial-days = { $count } Дней
 trial-hours = { $count } Часов
 trial-less-day = Менее 1 дня
+
+account-found-manual = 
+    🔍 **Найден существующий аккаунт:**
+    
+    👤 Имя: { $username }
+    📦 Тариф: { $tariff }
+    📅 Истекает: { $expire }
+    
+    Вы можете привязать его или создать новый.
+
+btn-use-existing = 🔗 Привязать этот
+btn-create-new = 🆕 Создать новый
+btn-to-menu = 🔙 В меню
+
+devices-title = 📱 **Подключенные устройства**
+devices-empty = Устройств не найдено.
+devices-item = 
+    📱 <b>{ $model }</b> ({ $platform })
+    📅 Был в сети: { $last_active }
+devices-select-account = 🗂 Выберите аккаунт для управления:
+btn-delete-device = 🗑 Отключить
+device-deleted = ✅ Устройство отключено.
+device-delete-fail = ❌ Не удалось отключить устройство.
+device-confirm-delete = Вы уверены, что хотите отключить <b>{ $model }</b>?
 
 support-welcome = 
     👨‍💻 Вы связались с поддержкой.
@@ -97,7 +140,7 @@ admin-cp-grant-success =
     ✅ **Пользователь создан!**
     
     👤 Username: `{ $username }`
-    🔗 Link: `{ $link }`
+    🔗 Link: { $link }
     📊 Traffic: { $traffic } GB/mo
     ⏳ Expire: { $expire }
 admin-cp-btn-to-menu = 🔙 В меню

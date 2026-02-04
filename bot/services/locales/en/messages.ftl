@@ -11,11 +11,30 @@ start-active-sub =
 btn-trial = 🎁 Try for free
 btn-shop = 🛒 Buy VPN
 btn-profile = 👤 Profile
+btn-devices = 📱 My Devices
+btn-yes = ✅ Yes
+btn-no = ❌ No
 btn-support = 🆘 Support
 
 profile-title = 👤 Your Profile
-profile-id = ID: { $id }
+profile-id = 👤 Tg ID: { $id }
 profile-status = Status: { $status }
+
+# Shared components
+profile-expiry = 📅 Active until { $date }
+profile-traffic = 📊 Traffic: { $used } / { $limit } GB ({ $percent }%) { $bar }
+profile-link = 🔗 Link: { $link }
+
+profile-additional-accounts = 
+    <b>──────────────</b>
+    📂 <b>Special Accounts:</b>
+profile-account-item = 
+    👤 <b>{ $username }</b>
+    { $expiry }
+    { $traffic }
+    { $link }
+
+profile-link = 🔗 Link: { $link }
 
 subscription-active = ✅ Active until { $date }
 subscription-none = ❌ No active subscription
@@ -36,6 +55,30 @@ trial-failed = ❌ Failed to activate trial. Please contact support.
 trial-days = { $count } Days
 trial-hours = { $count } Hours
 trial-less-day = Less than 1 Day
+
+account-found-manual = 
+    🔍 **Found existing account:**
+    
+    👤 Name: { $username }
+    📦 Plan: { $tariff }
+    📅 Expires: { $expire }
+    
+    You can link it or create a new one.
+
+btn-use-existing = 🔗 Link Found Account
+btn-create-new = 🆕 Create New Account
+btn-to-menu = 🔙 Menu
+
+devices-title = 📱 **Connected Devices**
+devices-empty = No devices found.
+devices-item = 
+    📱 <b>{ $model }</b> ({ $platform })
+    📅 Last seen: { $last_active }
+devices-select-account = 🗂 Select an account to manage devices:
+btn-delete-device = 🗑 Disconnect
+device-deleted = ✅ Device disconnected.
+device-delete-fail = ❌ Failed to disconnect device.
+device-confirm-delete = Are you sure you want to disconnect <b>{ $model }</b>?
 
 support-welcome = 
     👨‍💻 You contacted customer support.
@@ -95,7 +138,7 @@ admin-cp-grant-success =
     ✅ **User Created!**
     
     👤 Username: `{ $username }`
-    🔗 Link: `{ $link }`
+    🔗 Link: { $link }
     📊 Traffic: { $traffic } GB/mo
     ⏳ Expire: { $expire }
 admin-cp-btn-to-menu = 🔙 Menu
