@@ -115,9 +115,9 @@ admin-cp-created = ✅ Тариф **{ $name }** создан!
 admin-cp-not-found = Тариф не найден
 admin-cp-view-title = 💎 **{ $name }**
 admin-cp-view-squad = 🆔 Squad: `{ $squad }`
-admin-cp-view-traffic = 📊 Traffic: `{ $traffic } GB/mo`
-admin-cp-view-duration = ⏳ Duration: `{ $duration }`
-admin-cp-view-tag = 🏷 Tag: `{ $tag }`
+admin-cp-view-traffic = 📊 Трафик: `{ $traffic } ГБ/мес`
+admin-cp-view-duration = ⏳ Длительность: `{ $duration }`
+admin-cp-view-tag = 🏷 Тег: `{ $tag }`
 admin-cp-btn-grant = 🚀 Выдать пользователю
 admin-cp-btn-edit = ✏️ Изменить
 admin-cp-btn-delete = 🗑 Удалить
@@ -140,9 +140,9 @@ admin-cp-grant-success =
     ✅ **Пользователь создан!**
     
     👤 Username: `{ $username }`
-    🔗 Link: { $link }
-    📊 Traffic: { $traffic } GB/mo
-    ⏳ Expire: { $expire }
+    🔗 Ссылка: { $link }
+    📊 Трафик: { $traffic } ГБ/мес
+    ⏳ Истекает: { $expire }
 admin-cp-btn-to-menu = 🔙 В меню
 
 bot-unknown-command = 
