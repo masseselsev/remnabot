@@ -18,30 +18,24 @@ class MockL10n:
     def format_value(self, key, args=None):
         return f"[{key}]"
 
+import aiohttp
+
 async def main():
     print(f"DEBUG: Config Remnawave URL: {config.remnawave_url}")
+    url = f"{config.remnawave_url}/api/users"
+    headers = {
+        "Authorization": f"Bearer {config.remnawave_api_key.get_secret_value()}",
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+    params = {"limit": "10"}
     
-    queries = [
-        {"search": "85751735"},
-        {"search": "tg_85751735"},
-        {"search": "Masse13"},
-        {"limit": 10},
-        {} # Default
-    ]
-    
-    for q in queries:
-        print(f"--- Query: {q} ---")
-        try:
-            users = await global_api.get_users(**q)
-            count = len(users) if isinstance(users, list) else "Not List"
-            print(f"Result count: {count}")
-            if isinstance(users, list) and count > 0:
-                print(f"First user: {users[0].get('username')}")
-                # Check for masse13
-                found = any(str(u.get('telegramId')) == "85751735" for u in users)
-                print(f"Found 85751735: {found}")
-        except Exception as e:
-            print(f"Error: {e}")
+    print(f"--- RAW REQUEST to {url} ---")
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, params=params) as response:
+            print(f"Status: {response.status}")
+            text = await response.text()
+            print(f"Body: {text[:500]}...") # Print first 500 chars
 
 
 
