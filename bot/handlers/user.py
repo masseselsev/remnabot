@@ -40,6 +40,9 @@ async def check_existing_accounts(user_id: int):
         
         target_username = f"tg_{user_id}"
         
+        # DEBUG
+        print(f"DEBUG: check_existing_accounts candidates: {len(candidates)}")
+        
         for u in candidates:
             # Check explicit telegramId match (robust) or username match
             tid = u.get('telegramId')
