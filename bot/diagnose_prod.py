@@ -10,9 +10,8 @@ from bot.services.remnawave import RemnawaveAPI
 import inspect
 
 from bot.handlers.user import check_existing_accounts, generate_profile_content
-from bot.database.core import get_session
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from bot.services.remnawave import api as global_api, RemnawaveAPI
+from bot.database.core import get_session, async_session
 from bot.config import config
 
 class MockL10n:
@@ -20,31 +19,25 @@ class MockL10n:
         return f"[{key}]"
 
 async def main():
-    api = RemnawaveAPI()
-    tg_id = 85751735 # masse13
+    print(f"DEBUG: Config Remnawave URL: {config.remnawave_url}")
+    print(f"DEBUG: Global API Base URL: {global_api.base_url}")
     
-    print("Checking connection to API...")
-    print("Skipping preliminary check, proceeding to account check...")
+    print("--- Testing Global API directly ---")
+    users = await global_api.get_users(search="85751735")
+    print(f"Global API returned type: {type(users)}")
+    if isinstance(users, dict):
+         print(f"Global API keys: {users.keys()}")
+         if 'response' in users:
+             print(f"Global API response len: {len(users['response'])}")
+    elif isinstance(users, list):
+         print(f"Global API list len: {len(users)}")
+    else:
+         print(f"Global API raw: {users}")
 
-    std, man = await check_existing_accounts(tg_id)
-    
-    print(f"Standard Account: {std['username'] if std else 'None'}")
-    print(f"Manual Accounts: {[m['username'] for m in man]}")
-    
-    # Init DB
-    print("Initializing DB...")
-    # config.database_url might need fix if inside docker it is different? 
-    # Usually it is postgresql+asyncpg://user:pass@db:5432/db
-    # Inside docker 'db' hostname resolves.
-    
-    from bot.database.core import async_session
-    
-    async with async_session() as session:
-        print("Running generate_profile_content...")
-        text, kb = await generate_profile_content(tg_id, session, MockL10n())
-        print("--- PROFILE TEXT ---")
-        print(text)
-        print("--------------------")
+    print("--- Testing check_existing_accounts ---")
+    std, man = await check_existing_accounts(85751735)
+    print(f"STD: {std is not None}, MANUAL: {len(man)}")
+
 
 
 if __name__ == "__main__":
