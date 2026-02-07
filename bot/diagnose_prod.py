@@ -3,6 +3,8 @@ import sys
 import os
 
 # Ensure we can import bot modules
+sys.path.append("/app")
+# And also /opt... just in case
 sys.path.append("/opt/stacks/remnabot")
 
 from bot.services.remnawave import RemnawaveAPI
