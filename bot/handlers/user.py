@@ -459,18 +459,32 @@ async def generate_profile_content(user_id, session, l10n):
         traffic_info += f"\n{t_link}"
 
     # Additional Accounts Visibility
+    # DEBUG: Print to stdout so we can see in docker logs
+    print(f"DEBUG: Generating profile for {user.id} ({user.username})")
+    
     std_acc, manual_accs = await check_existing_accounts(user.id)
+    print(f"DEBUG: check_existing_accounts returned: STD={std_acc is not None}, MANUAL={len(manual_accs)}")
+    if manual_accs:
+        print(f"DEBUG: Manual accs: {[m.get('username') for m in manual_accs]}")
+        
     additional_accs = []
     current_uuid = user.remnawave_uuid
+    print(f"DEBUG: Current UUID: {current_uuid}")
     
     # Add manual accounts if they are not current
     for m in manual_accs:
-        if m.get('uuid') != current_uuid:
+        muuid = m.get('uuid')
+        print(f"DEBUG: Checking manual acc: {m.get('username')} uuid={muuid}")
+        if muuid != current_uuid:
             additional_accs.append(m)
+        else:
+            print("DEBUG: Skipped matching UUID")
             
     # Add standard account if it exists but is not current
     if std_acc and std_acc.get('uuid') != current_uuid:
         additional_accs.append(std_acc)
+
+    print(f"DEBUG: Final additional_accs count: {len(additional_accs)}")
         
     additional_info = ""
     if additional_accs:
