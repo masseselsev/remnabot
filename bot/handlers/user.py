@@ -6,8 +6,56 @@ from bot.database.core import get_session
 from bot.database import models
 from bot.config import config
 from fluent.runtime import FluentLocalization
+from datetime import datetime, timezone, timedelta
+from dateutil import parser
 
 router = Router()
+
+async def check_existing_accounts(user_id: int):
+    """
+    Searches for accounts by Telegram ID.
+    Returns: (standard_account, manual_accounts_list)
+    standard_account: Account with username "tg_{user_id}"
+    manual_accounts_list: List of other accounts with matching telegramId
+    """
+    from bot.services.remnawave import api
+    try:
+        # Use search to find user by ID (more reliable than fetching all)
+        users = await api.get_users(search=str(user_id))
+        
+        candidates = []
+        if isinstance(users, list): candidates = users
+        elif isinstance(users, dict):
+             if 'response' in users:
+                 r = users['response']
+                 if isinstance(r, list): candidates = r
+                 elif isinstance(r, dict):
+                     candidates = r.get('users', []) or r.get('data', [])
+
+        standard = None
+        manual = []
+        
+        target_username = f"tg_{user_id}"
+        
+        for u in candidates:
+            # Check explicit telegramId match (robust) or username match
+            tid = u.get('telegramId')
+            uname = u.get('username')
+            
+            # API search is fuzzy, so verify ID or exact username
+            is_match = False
+            if str(tid) == str(user_id): is_match = True
+            if uname == target_username: is_match = True
+            
+            if is_match:
+                if uname == target_username:
+                    standard = u
+                else:
+                    manual.append(u)
+            
+        return standard, manual
+    except Exception:
+        return None, []
 
 @router.message(CommandStart())
 async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
@@ -24,7 +72,21 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
             language_code="ru" if message.from_user.language_code == "ru" else "en"
         )
         session.add(user)
-        await session.commit()
+        # Flush to get ID if needed
+        await session.flush()
+
+    # Account Discovery (Auto-Link)
+    found_manual_acc = None
+    if not user.remnawave_uuid:
+        std_acc, man_acc_list = await check_existing_accounts(message.from_user.id)
+        if std_acc:
+            user.remnawave_uuid = std_acc['uuid']
+            # We don't need to notify "Linked", just proceed as normal
+        elif man_acc_list:
+            # Pick the first one for notification
+            found_manual_acc = man_acc_list[0]
+            
+    await session.commit()
 
     # Welcome message
     text = l10n.format_value("start-welcome", {"name": message.from_user.first_name})
@@ -35,9 +97,33 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
         [types.KeyboardButton(text=l10n.format_value("btn-trial")), types.KeyboardButton(text=l10n.format_value("btn-support"))]
     ]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-
     
     await message.answer(text, reply_markup=keyboard)
+
+    # 1. Manual Account Discovery Notification
+    if found_manual_acc:
+         # Calculate expiry for display
+         exp_date = "Unlimited"
+         expire_at = found_manual_acc.get('expireAt')
+         if expire_at:
+             try:
+                 dt = parser.isoparse(expire_at)
+                 if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+                 msk_tz = timezone(timedelta(hours=3))
+                 exp_date = dt.astimezone(msk_tz).strftime("%Y-%m-%d")
+             except: pass
+             
+         msg_text = l10n.format_value("account-found-manual", {
+             "username": found_manual_acc.get('username', 'Unknown'),
+             "tariff": "Manual/Imported", 
+             "expire": exp_date
+         })
+         
+         ikb = types.InlineKeyboardMarkup(inline_keyboard=[
+             [types.InlineKeyboardButton(text=l10n.format_value("btn-create-new"), callback_data="req_trial_new")],
+             [types.InlineKeyboardButton(text=l10n.format_value("btn-use-existing"), callback_data=f"link_acc_{found_manual_acc['uuid']}")]
+         ])
+         await message.answer(msg_text, reply_markup=ikb, parse_mode="Markdown")
 
     # Check for active subscription (notify newly granted users)
     if user.remnawave_uuid:
@@ -132,34 +218,40 @@ async def process_trial(message: types.Message, session, l10n: FluentLocalizatio
                 found_user_data = None
         
         if not found_user_data:
-             # Search by username
-             users = await api.get_users(search=f"tg_{user.id}")
+             std_acc, man_acc_list = await check_existing_accounts(user.id)
              
-             # Parse result (nested response handling reused or simplified)
-             candidates = []
-             if isinstance(users, list): candidates = users
-             elif isinstance(users, dict):
-                 if 'response' in users:
-                     if 'users' in users['response']: candidates = users['response']['users']
-                     elif 'internalSquads' in users['response']: candidates = users['response']['internalSquads'] 
-                     elif 'data' in users['response']: candidates = users['response']['data']
-             
-             logger.info("username_search_debug", 
-                        search_query=f"tg_{user.id}", 
-                        raw_type=str(type(users)),
-                        candidates_count=len(candidates))
-
-             for u in candidates:
-                 u_name = u.get('username')
-                 target = f"tg_{user.id}"
-                 # logger.debug("checking_candidate", candidate=u_name, target=target)
-                 if u_name == target:
-                     found_user_data = u
-                     break
-        
-        if not found_user_data:
-             # Search by username logic (already done above, assuming found_user_data is result)
-             pass
+             if std_acc:
+                 found_user_data = std_acc
+                 user.remnawave_uuid = std_acc['uuid']
+                 await session.commit()
+                 
+             elif man_acc_list:
+                 # Found manual accounts but no standard one.
+                 # Offer choice to user.
+                 found_manual = man_acc_list[0]
+                 
+                 exp_date = "Unlimited"
+                 expire_at = found_manual.get('expireAt')
+                 if expire_at:
+                     try:
+                         dt = parser.isoparse(expire_at)
+                         if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+                         msk_tz = timezone(timedelta(hours=3))
+                         exp_date = dt.astimezone(msk_tz).strftime("%Y-%m-%d")
+                     except: pass
+                     
+                 msg_text = l10n.format_value("account-found-manual", {
+                     "username": found_manual.get('username', 'Unknown'),
+                     "tariff": "Manual/Imported", 
+                     "expire": exp_date
+                 })
+                 
+                 ikb = types.InlineKeyboardMarkup(inline_keyboard=[
+                     [types.InlineKeyboardButton(text=l10n.format_value("btn-create-new"), callback_data="req_trial_new")],
+                     [types.InlineKeyboardButton(text=l10n.format_value("btn-use-existing"), callback_data=f"link_acc_{found_manual['uuid']}")]
+                 ])
+                 await message.answer(msg_text, reply_markup=ikb, parse_mode="Markdown")
+                 return
 
         # === Verification Block ===
         tags = ""
@@ -251,7 +343,8 @@ async def process_trial(message: types.Message, session, l10n: FluentLocalizatio
                         f"{msg_active}\n\n"
                         f"{msg_traffic}\n"
                         f"{msg_expires}\n\n"
-                        f"{msg_link}\n{link}"
+                        f"{msg_link}\n{link}",
+                        disable_web_page_preview=True
                      )
                      return
              
@@ -266,6 +359,601 @@ async def process_trial(message: types.Message, session, l10n: FluentLocalizatio
         await message.answer("❌ Service temporarily unavailable. Please try again later.")
         return
 
+    # Proceed to create order using helper
+    await execute_trial_creation(message, session, l10n, user)
+
+async def generate_profile_content(user_id, session, l10n):
+    user = await session.get(models.User, user_id)
+    if not user: return None, None
+    
+    # Fetch status from Remnawave
+    from bot.services.remnawave import api
+    from dateutil import parser
+    from datetime import datetime, timezone, timedelta
+
+    rw_uuid = user.remnawave_uuid
+    found_user_data = None
+    
+    if rw_uuid:
+        try:
+            raw = await api.get_user(rw_uuid)
+            if raw and 'response' in raw:
+                found_user_data = raw['response']
+            else:
+                found_user_data = raw
+        except:
+            found_user_data = None
+    
+    # Tariff Name from local DB
+    stmt = select(models.Order).options(selectinload(models.Order.tariff)).where(
+        models.Order.user_id == user.id, 
+        models.Order.status == models.OrderStatus.PAID
+    ).order_by(models.Order.created_at.desc()).limit(1)
+    
+    result = await session.execute(stmt)
+    last_order = result.scalar_one_or_none()
+    tariff_name = last_order.tariff.name if last_order and last_order.tariff else "Unknown"
+
+    formatted_status = l10n.format_value("subscription-none")
+    traffic_info = ""
+    
+    if found_user_data:
+        # Expiry
+        expire_at_str = found_user_data.get('expireAt')
+        if expire_at_str:
+            try:
+                dt = parser.isoparse(expire_at_str)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                
+                now_utc = datetime.now(timezone.utc)
+                if dt > now_utc:
+                    msk_tz = timezone(timedelta(hours=3))
+                    date_str = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
+                    formatted_status = l10n.format_value("profile-expiry", {"date": date_str})
+            except:
+                pass
+        
+        # Traffic
+        limit_bytes = found_user_data.get('trafficLimitBytes') or 0
+        used_bytes = found_user_data.get('userTraffic', {}).get('usedTrafficBytes') or 0
+        
+        limit_gb = round(int(limit_bytes) / (1024**3), 1)
+        used_gb = round(int(used_bytes) / (1024**3), 2)
+        
+        percent = 0
+        if limit_bytes > 0:
+            percent = round((used_bytes / limit_bytes) * 100, 1)
+            
+        # Traffic Bar (Green -> Yellow -> Orange -> Red)
+        bar_parts = []
+        for i in range(5):
+             low = i * 20
+             high = (i + 1) * 20
+             if percent >= high:
+                 bar_parts.append("🟥")
+             elif percent <= low:
+                 bar_parts.append("🟩")
+             elif (percent - low) < 10:
+                 bar_parts.append("🟨")
+             else:
+                 bar_parts.append("🟧")
+        bar_str = "".join(bar_parts)
+            
+        t_tariff = l10n.format_value("profile-tariff", {"name": tariff_name})
+        t_traffic = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "percent": percent, "bar": bar_str})
+        
+        traffic_info = f"\n{t_tariff}\n{t_traffic}"
+        
+        # Link for main account
+        from bot.config import config
+        main_link = found_user_data.get('subscriptionUrl')
+        if not main_link:
+             main_link = f"{config.remnawave_url}/sub/{user.remnawave_uuid}"
+        
+        t_link = l10n.format_value("profile-link", {"link": main_link})
+        traffic_info += f"\n{t_link}"
+
+    # Additional Accounts Visibility
+    std_acc, manual_accs = await check_existing_accounts(user.id)
+    additional_accs = []
+    current_uuid = user.remnawave_uuid
+    
+    # Add manual accounts if they are not current
+    for m in manual_accs:
+        if m.get('uuid') != current_uuid:
+            additional_accs.append(m)
+            
+    # Add standard account if it exists but is not current
+    if std_acc and std_acc.get('uuid') != current_uuid:
+        additional_accs.append(std_acc)
+        
+    additional_info = ""
+    if additional_accs:
+        additional_info = "\n\n" + l10n.format_value("profile-additional-accounts") + "\n"
+        for acc in additional_accs:
+            u_name = acc.get('username', 'Unknown')
+            
+            # Expiry
+            exp_str = l10n.format_value("subscription-none") # Default if missing
+            if acc.get('expireAt'):
+                try:
+                    edt = parser.isoparse(acc.get('expireAt'))
+                    if edt.tzinfo is None: edt = edt.replace(tzinfo=timezone.utc)
+                    msk_tz = timezone(timedelta(hours=3))
+                    date_str = edt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
+                    exp_str = l10n.format_value("profile-expiry", {"date": date_str})
+                except: pass
+                
+            # Traffic
+            limit_bytes = acc.get('trafficLimitBytes') or 0
+            used_bytes = acc.get('userTraffic', {}).get('usedTrafficBytes') or 0
+            limit_gb = round(int(limit_bytes) / (1024**3), 1)
+            used_gb = round(int(used_bytes) / (1024**3), 2)
+            
+            percent = 0
+            if limit_bytes > 0:
+                percent = round((used_bytes / limit_bytes) * 100, 1)
+                
+            bar_parts = []
+            for i in range(5):
+                 low = i * 20
+                 high = (i + 1) * 20
+                 if percent >= high:
+                     bar_parts.append("🟥")
+                 elif percent <= low:
+                     bar_parts.append("🟩")
+                 elif (percent - low) < 10:
+                     bar_parts.append("🟨")
+                 else:
+                     bar_parts.append("🟧")
+            bar_str = "".join(bar_parts)
+                
+            t_traffic = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "percent": percent, "bar": bar_str})
+            
+            # Link
+            from bot.config import config
+            link = acc.get('subscriptionUrl')
+            if not link:
+                link = f"{config.remnawave_url}/sub/{acc.get('uuid')}"
+            
+            t_link = l10n.format_value("profile-link", {"link": link})
+            
+            additional_info += l10n.format_value("profile-account-item", {
+                "username": u_name, 
+                "expiry": exp_str,
+                "traffic": t_traffic,
+                "link": t_link
+            }) + "\n"
+
+    text = (
+        f"{l10n.format_value('profile-id', {'id': user.id})}\n"
+        f"{formatted_status}"
+        f"{traffic_info}"
+        f"{additional_info}"
+    )
+    
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text=l10n.format_value("btn-devices"), callback_data="my_devices")],
+        [types.InlineKeyboardButton(text="🌐 Language / Язык", callback_data="change_lang")]
+    ])
+    
+    return text, kb
+
+@router.message(F.text == "👤 Profile")
+@router.message(F.text == "👤 Профиль")
+async def process_profile(message: types.Message, session, l10n: FluentLocalization):
+    text, kb = await generate_profile_content(message.from_user.id, session, l10n)
+    if text:
+        await message.answer(text, reply_markup=kb, parse_mode="HTML", disable_web_page_preview=True)
+
+@router.callback_query(F.data == "change_lang")
+async def show_language_selector(callback: types.CallbackQuery, l10n: FluentLocalization):
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="🇺🇸 English", callback_data="set_lang_en")],
+        [types.InlineKeyboardButton(text="🇷🇺 Русский", callback_data="set_lang_ru")],
+        [types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="back_profile")]
+    ])
+    await callback.message.edit_text("Select language / Выберите язык:", reply_markup=kb)
+
+@router.callback_query(F.data == "delete_msg")
+async def delete_msg(callback: types.CallbackQuery):
+    await callback.message.delete()
+
+@router.callback_query(F.data.startswith("set_lang_"))
+async def set_language(callback: types.CallbackQuery, session):
+    lang_code = callback.data.split("_")[2]
+    user = await session.get(models.User, callback.from_user.id)
+    if user:
+        user.language_code = lang_code
+        await session.commit()
+    
+    if lang_code == "ru":
+        text = "✅ Язык изменен на Русский.\nМеню обновлено."
+        btn_shop = "🛒 Купить VPN"
+        btn_profile = "👤 Профиль"
+        btn_trial = "🎁 Попробовать бесплатно"
+        btn_support = "🆘 Поддержка"
+    else:
+        text = "✅ Language changed to English.\nMenu updated."
+        btn_shop = "🛒 Buy VPN"
+        btn_profile = "👤 Profile"
+        btn_trial = "🎁 Try for free"
+        btn_support = "🆘 Support"
+
+    # Update Reply Keyboard
+    kb = [
+        [types.KeyboardButton(text=btn_shop), types.KeyboardButton(text=btn_profile)],
+        [types.KeyboardButton(text=btn_trial), types.KeyboardButton(text=btn_support)]
+    ]
+    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    
+    await callback.message.delete()
+    await callback.message.answer(text, reply_markup=keyboard)
+    await callback.answer()
+
+@router.callback_query(F.data == "my_devices")
+@router.callback_query(F.data.startswith("dev_acc_"))
+async def show_devices_list(callback: types.CallbackQuery, session, l10n: FluentLocalization):
+    user = await session.get(models.User, callback.from_user.id)
+    if not user.remnawave_uuid:
+        await callback.answer(l10n.format_value("subscription-none"), show_alert=True)
+        return
+
+    # 1. Determine target account UUID
+    target_uuid = None
+    if callback.data.startswith("dev_acc_"):
+        target_uuid = callback.data.split("_", 2)[2]
+    else:
+        # Initial entry: Check if we need selection menu
+        std_acc, manual_accs = await check_existing_accounts(user.id)
+        all_accs = []
+        if std_acc: all_accs.append(std_acc)
+        all_accs.extend(manual_accs)
+        
+        # Deduplicate by UUID just in case
+        unique_accs = {a['uuid']: a for a in all_accs}.values()
+        all_accs = list(unique_accs)
+        
+        if len(all_accs) > 1:
+            # Show Selection Menu
+            kb_rows = []
+            for acc in all_accs:
+                 u_name = acc.get('username', 'Unknown')
+                 uuid = acc.get('uuid')
+                 kb_rows.append([types.InlineKeyboardButton(text=f"👤 {u_name}", callback_data=f"dev_acc_{uuid}")])
+            
+            kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="back_profile")])
+            await callback.message.edit_text(l10n.format_value("devices-select-account"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows))
+            return
+        elif len(all_accs) == 1:
+            target_uuid = all_accs[0]['uuid']
+        else:
+            # Fallback to current if something weird happens
+            target_uuid = user.remnawave_uuid
+
+    # 2. Show Devices for Target UUID
+    from bot.services.remnawave import api
+    
+    try:
+        devices = await api.get_user_devices(target_uuid)
+    except Exception as e:
+        devices = []
+        
+    # UUID prefix for context in callbacks
+    # We use first 8 chars of UUID to save space in callback_data
+    uuid_prefix = target_uuid[:8]
+    # We store map in memory or just rely on prefix? 
+    # Actually, we need full UUID for delete. But callback length limit (64 bytes).
+    # UUID (36) + "del_dev_" (8) = 44. HWID is long.
+    # We must trust that target_uuid is user.remnawave_uuid OR verify usage.
+    # We will pass target_uuid in a simplified way or rely on a "current selection" state?
+    # Stateless is better.
+    # Let's try: dev_{uuid_part}_{hwid_part}
+    # But wait, 64 bytes is tight. 
+    # Strategy: Pass `dev_X<index>` where index maps to a cache? No, stateless.
+    # Let's use `d_<uuid-prefix>_<shorthwid>`?
+    # Allow full uuid lookup via prefix?
+    # user.py has no cache.
+    # Let's Assume: We pass `target_uuid` in button "Back" navigation, but for item details...
+    # We can use `d_{uuid_prefix}_{short_hwid}` and search efficiently.
+        
+    if not devices:
+        kb = types.InlineKeyboardMarkup(inline_keyboard=[
+             [types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data=f"my_devices")] 
+        ])
+        await callback.message.edit_text(l10n.format_value("devices-empty"), reply_markup=kb, parse_mode="HTML")
+        return
+
+    kb_rows = []
+    msk_tz = timezone(timedelta(hours=3)) 
+
+    for dev in devices:
+        model = dev.get('deviceModel', 'Unknown')
+        platform = dev.get('platform', 'Unknown')
+        hwid = dev.get('hwid')
+        updated_at = dev.get('updatedAt')
+        
+        time_str = "?"
+        if updated_at:
+             try:
+                 dt = parser.isoparse(updated_at)
+                 if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+                 time_str = dt.astimezone(msk_tz).strftime("%d.%m %H:%M")
+             except: pass
+        
+        btn_text = f"{model} ({platform}) {time_str}"
+        if len(btn_text) > 30: btn_text = btn_text[:29] + "…"
+        
+        # Format: dev_{uuid_head}_{hwid_head}
+        # uuid_head = 8 chars. hwid for WG is usually Key.
+        # Ensure we can exact match later.
+        # Store minimal unique data. 
+        # Actually, if we just pass index in list? No, race condition.
+        # Pass first 8 chars of HWID.
+        cb_data = f"dev_{target_uuid[:8]}_{hwid[:10]}"
+        kb_rows.append([types.InlineKeyboardButton(text=btn_text, callback_data=cb_data)])
+    
+    # Back button logic
+    # If explicitly viewing account, back goes to "my_devices" (which checks list again)
+    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="my_devices")])
+    
+    msg_text = l10n.format_value("devices-title")
+    await callback.message.edit_text(msg_text, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="Markdown")
+
+@router.callback_query(F.data.startswith("dev_"))
+async def show_device_details(callback: types.CallbackQuery, session, l10n: FluentLocalization):
+    # Format: dev_{uuid_head}_{hwid_head}
+    parts = callback.data.split("_")
+    if len(parts) < 3: return # Validation
+    
+    uuid_part = parts[1]
+    hwid_part = parts[2]
+    
+    user = await session.get(models.User, callback.from_user.id)
+    if not user: return
+    
+    # Resolve full UUID from all possible accounts
+    std_acc, manual_accs = await check_existing_accounts(user.id)
+    all_accs = []
+    if std_acc: all_accs.append(std_acc)
+    all_accs.extend(manual_accs)
+    
+    target_uuid = None
+    for acc in all_accs:
+        if acc['uuid'].startswith(uuid_part):
+            target_uuid = acc['uuid']
+            break
+            
+    if not target_uuid:
+        await callback.answer("❌ Account context lost.", show_alert=True)
+        return
+    
+    # Fetch devices for THAT account
+    from bot.services.remnawave import api
+    try:
+        devices = await api.get_user_devices(target_uuid)
+    except:
+        devices = []
+    
+    target_dev = None
+    for d in devices:
+        h = d.get('hwid')
+        if h and h.startswith(hwid_part): # HWID part match
+             target_dev = d
+             break
+    
+    if not target_dev:
+        await callback.answer(l10n.format_value("devices-empty"), show_alert=True)
+        # Return to list of THAT account
+        # We simulate callback with dev_acc_{uuid}
+        cb = types.CallbackQuery(
+            id=callback.id, 
+            from_user=callback.from_user, 
+            message=callback.message, 
+            chat_instance=callback.chat_instance,
+            data=f"dev_acc_{target_uuid}"
+        )
+        await show_devices_list(cb, session, l10n)
+        return
+
+    model = target_dev.get('deviceModel', 'Unknown')
+    platform = target_dev.get('platform', 'Unknown')
+    updated_at = target_dev.get('updatedAt')
+    
+    msk_tz = timezone(timedelta(hours=3))
+    last_act = "Unknown"
+    if updated_at:
+         dt = parser.isoparse(updated_at)
+         if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+         last_act = dt.astimezone(msk_tz).strftime("%d.%m.%Y %H:%M:%S")
+
+    text = l10n.format_value("devices-item", {
+        "model": model,
+        "platform": platform,
+        "last_active": last_act
+    })
+    
+    # Delete using full HWID context: del_dev_{uuid_prefix}_{hwid_prefix}
+    # Wait, for delete we need full hwid? 
+    # API delete needs: hwid (full), userUuid (full).
+    # We have full userUuid (target_uuid).
+    # We DO NOT have full HWID in callback data if we truncated it previously?
+    # Ah, `target_dev` HAS full HWID.
+    # So we can pass full HWID in next step?
+    # Length limit: 64. 
+    # del_dev_ (8) + uuid_head(8) + _ (1) + hwid_head (10) = 27 chars. Safe.
+    # No, we need context for CONFIRMATION.
+    # Let's pass `del_{uuid_head}_{hwid_head}`. 
+    # Then re-fetch in confirm step to get full HWID again. Ideally reliable.
+    
+    del_cb = f"del_{uuid_part}_{hwid_part}"
+    
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text=l10n.format_value("btn-delete-device"), callback_data=del_cb)],
+        [types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data=f"dev_acc_{target_uuid}")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("del_"))
+async def ask_delete_device(callback: types.CallbackQuery, session, l10n: FluentLocalization):
+    # Format: del_{uuid_part}_{hwid_part}
+    parts = callback.data.split("_")
+    if len(parts) < 3: return
+    
+    uuid_part = parts[1]
+    hwid_part = parts[2]
+    
+    user = await session.get(models.User, callback.from_user.id)
+    # Resolve Account
+    std_acc, manual_accs = await check_existing_accounts(user.id)
+    all_accs = []
+    if std_acc: all_accs.append(std_acc)
+    all_accs.extend(manual_accs)
+    
+    target_uuid = None
+    for acc in all_accs:
+        if acc['uuid'].startswith(uuid_part):
+            target_uuid = acc['uuid']
+            break
+            
+    if not target_uuid:
+        await callback.answer("❌ Account context lost.", show_alert=True)
+        return
+
+    # Fetch device to get Name + Full HWID
+    model_name = "Device"
+    full_hwid = None
+    
+    from bot.services.remnawave import api
+    try:
+         devices = await api.get_user_devices(target_uuid)
+         for d in devices:
+             h = d.get('hwid')
+             if h and h.startswith(hwid_part):
+                 model_name = d.get('deviceModel', 'Device')
+                 full_hwid = h
+                 break
+    except: pass
+    
+    if not full_hwid:
+         await callback.answer(l10n.format_value("device-delete-fail"), show_alert=True)
+         return
+
+    # Callback for confirmation: cdel_{uuid_part}_{hwid_part}
+    
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [
+            types.InlineKeyboardButton(text=l10n.format_value("btn-yes"), callback_data=f"cdel_{uuid_part}_{hwid_part}"),
+            types.InlineKeyboardButton(text=l10n.format_value("btn-no"), callback_data=f"dev_{uuid_part}_{hwid_part}")
+        ]
+    ])
+    await callback.message.edit_text(l10n.format_value("device-confirm-delete", {"model": model_name}), reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data.startswith("cdel_"))
+async def process_delete_device_wrapper(callback: types.CallbackQuery, session, l10n: FluentLocalization):
+     # Format: cdel_{uuid_part}_{hwid_part}
+     parts = callback.data.split("_")
+     if len(parts) < 3: return
+     
+     uuid_part = parts[1]
+     hwid_part = parts[2]
+     
+     user = await session.get(models.User, callback.from_user.id)
+     
+     # Resolve Account
+     std_acc, manual_accs = await check_existing_accounts(user.id)
+     all_accs = []
+     if std_acc: all_accs.append(std_acc)
+     all_accs.extend(manual_accs)
+    
+     target_uuid = None
+     for acc in all_accs:
+        if acc['uuid'].startswith(uuid_part):
+            target_uuid = acc['uuid']
+            break
+            
+     if not target_uuid:
+         await callback.answer("❌ Account context lost.", show_alert=True)
+         return
+
+     from bot.services.remnawave import api
+     
+     # Re-resolve Full HWID (Safe approach)
+     full_hwid = None
+     try:
+          devices = await api.get_user_devices(target_uuid)
+          for d in devices:
+              h = d.get('hwid')
+              if h and h.startswith(hwid_part):
+                  full_hwid = h
+                  break
+     except: pass
+     
+     if not full_hwid:
+          await callback.answer(l10n.format_value("device-delete-fail"), show_alert=True)
+          return
+
+     try:
+         await api.delete_user_device(full_hwid, target_uuid)
+         await callback.answer(l10n.format_value("device-deleted"), show_alert=True)
+     except Exception:
+         await callback.answer(l10n.format_value("device-delete-fail"), show_alert=True)
+     
+     # Return to list
+     cb = types.CallbackQuery(
+            id=callback.id, 
+            from_user=callback.from_user, 
+            message=callback.message, 
+            chat_instance=callback.chat_instance,
+            data=f"dev_acc_{target_uuid}"
+        )
+     await show_devices_list(cb, session, l10n)
+
+@router.callback_query(F.data == "back_profile")
+async def back_to_profile(callback: types.CallbackQuery, session, l10n: FluentLocalization):
+    text, kb = await generate_profile_content(callback.from_user.id, session, l10n)
+    if text:
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML", disable_web_page_preview=True)
+    else:
+        await callback.answer("Error loading profile", show_alert=True)
+
+
+@router.callback_query(F.data.startswith("link_acc_"))
+async def link_manual_account(callback: types.CallbackQuery, session, l10n: FluentLocalization):
+    uuid = callback.data.split("_", 2)[2]
+    user = await session.get(models.User, callback.from_user.id)
+    if user:
+        user.remnawave_uuid = uuid
+        await session.commit()
+    
+    await callback.answer(l10n.format_value("trial-activated"), show_alert=True)
+    
+    # Refresh logic similar to back_to_profile
+    await callback.message.delete()
+    wrapper = types.Message(
+        message_id=0, 
+        date=datetime.now(), 
+        chat=callback.message.chat, 
+        from_user=callback.from_user
+    )
+    await process_profile(wrapper, session, l10n)
+
+@router.callback_query(F.data == "req_trial_new")
+async def request_new_trial_explicit(callback: types.CallbackQuery, session, l10n: FluentLocalization):
+    user = await session.get(models.User, callback.from_user.id)
+    # We call the helper. 
+    # Note: execute_trial_creation expects a messageable object that has .answer()
+    # callback.message is such object.
+    await execute_trial_creation(callback.message, session, l10n, user)
+    await callback.answer()
+
+async def execute_trial_creation(messageable, session, l10n: FluentLocalization, user: models.User):
+    import structlog
+    from bot.services.remnawave import api
+    from bot.config import config
+    
     # Find trial tariff
     stmt = select(models.Tariff).where(models.Tariff.is_trial == True, models.Tariff.is_active == True)
     result = await session.execute(stmt)
@@ -349,140 +1037,14 @@ async def process_trial(message: types.Message, session, l10n: FluentLocalizatio
         msg_expires = l10n.format_value("trial-expires", {"date": expire_display})
         msg_link = l10n.format_value("trial-link-caption")
               
-        await message.answer(
+        await messageable.answer(
             f"{msg_activated}\n\n"
             f"{msg_traffic}\n"
             f"{msg_expires}\n\n"
-            f"{msg_link}\n{link}"
+            f"{msg_link}\n{link}",
+            disable_web_page_preview=True
         )
     else:
-        await message.answer("❌ Failed to activate trial. Please contact support.")
-
-@router.message(F.text == "👤 Profile")
-@router.message(F.text == "👤 Профиль")
-async def process_profile(message: types.Message, session, l10n: FluentLocalization):
-    user = await session.get(models.User, message.from_user.id)
-    
-    # Fetch status from Remnawave
-    from bot.services.remnawave import api
-    from dateutil import parser
-    from datetime import datetime, timezone, timedelta
-
-    rw_uuid = user.remnawave_uuid
-    found_user_data = None
-    
-    if rw_uuid:
-        try:
-            raw = await api.get_user(rw_uuid)
-            if raw and 'response' in raw:
-                found_user_data = raw['response']
-            else:
-                found_user_data = raw
-        except:
-            found_user_data = None
-    
-    # Tariff Name from local DB
-    stmt = select(models.Order).options(selectinload(models.Order.tariff)).where(
-        models.Order.user_id == user.id, 
-        models.Order.status == models.OrderStatus.PAID
-    ).order_by(models.Order.created_at.desc()).limit(1)
-    
-    result = await session.execute(stmt)
-    last_order = result.scalar_one_or_none()
-    tariff_name = last_order.tariff.name if last_order and last_order.tariff else "Unknown"
-
-    formatted_status = l10n.format_value("subscription-none")
-    traffic_info = ""
-    
-    if found_user_data:
-        # Expiry
-        expire_at_str = found_user_data.get('expireAt')
-        if expire_at_str:
-            try:
-                dt = parser.isoparse(expire_at_str)
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
-                
-                now_utc = datetime.now(timezone.utc)
-                if dt > now_utc:
-                    msk_tz = timezone(timedelta(hours=3))
-                    date_str = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
-                    formatted_status = l10n.format_value("subscription-active", {"date": date_str})
-            except:
-                pass
-        
-        # Traffic
-        limit_bytes = found_user_data.get('trafficLimitBytes') or 0
-        used_bytes = found_user_data.get('userTraffic', {}).get('usedTrafficBytes') or 0
-        
-        limit_gb = round(int(limit_bytes) / (1024**3), 1)
-        used_gb = round(int(used_bytes) / (1024**3), 2)
-        
-        percent = 0
-        if limit_bytes > 0:
-            percent = round((used_bytes / limit_bytes) * 100, 1)
-            
-        t_tariff = l10n.format_value("profile-tariff", {"name": tariff_name})
-        t_traffic = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "percent": percent})
-        
-        traffic_info = f"\n{t_tariff}\n{t_traffic}"
-
-    text = (
-        f"{l10n.format_value('profile-title')}\n"
-        f"{l10n.format_value('profile-id', {'id': user.id})}\n"
-        f"{formatted_status}"
-        f"{traffic_info}"
-    )
-    
-    kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="🌐 Language / Язык", callback_data="change_lang")]
-    ])
-    
-    await message.answer(text, reply_markup=kb)
-
-@router.callback_query(F.data == "change_lang")
-async def show_language_selector(callback: types.CallbackQuery):
-    kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="🇺🇸 English", callback_data="set_lang_en")],
-        [types.InlineKeyboardButton(text="🇷🇺 Русский", callback_data="set_lang_ru")],
-        [types.InlineKeyboardButton(text="🔙 Cancel", callback_data="delete_msg")]
-    ])
-    await callback.message.edit_text("Select language / Выберите язык:", reply_markup=kb)
-
-@router.callback_query(F.data == "delete_msg")
-async def delete_msg(callback: types.CallbackQuery):
-    await callback.message.delete()
-
-@router.callback_query(F.data.startswith("set_lang_"))
-async def set_language(callback: types.CallbackQuery, session):
-    lang_code = callback.data.split("_")[2]
-    user = await session.get(models.User, callback.from_user.id)
-    if user:
-        user.language_code = lang_code
-        await session.commit()
-    
-    if lang_code == "ru":
-        text = "✅ Язык изменен на Русский.\nМеню обновлено."
-        btn_shop = "🛒 Купить VPN"
-        btn_profile = "👤 Профиль"
-        btn_trial = "🎁 Попробовать бесплатно"
-        btn_support = "🆘 Поддержка"
-    else:
-        text = "✅ Language changed to English.\nMenu updated."
-        btn_shop = "🛒 Buy VPN"
-        btn_profile = "👤 Profile"
-        btn_trial = "🎁 Try for free"
-        btn_support = "🆘 Support"
-
-    # Update Reply Keyboard
-    kb = [
-        [types.KeyboardButton(text=btn_shop), types.KeyboardButton(text=btn_profile)],
-        [types.KeyboardButton(text=btn_trial), types.KeyboardButton(text=btn_support)]
-    ]
-    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-    
-    await callback.message.delete()
-    await callback.message.answer(text, reply_markup=keyboard)
-    await callback.answer()
+        await messageable.answer("❌ Failed to activate trial. Please contact support.")
 
 
