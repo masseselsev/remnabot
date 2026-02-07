@@ -19,6 +19,9 @@ async def check_existing_accounts(user_id: int):
     manual_accounts_list: List of other accounts with matching telegramId
     """
     from bot.services.remnawave import api
+    import structlog
+    logger = structlog.get_logger()
+
     try:
         # Use search to find user by ID (more reliable than fetching all)
         users = await api.get_users(search=str(user_id))
@@ -54,7 +57,8 @@ async def check_existing_accounts(user_id: int):
                     manual.append(u)
             
         return standard, manual
-    except Exception:
+    except Exception as e:
+        logger.error("check_accounts_error", error=str(e), user_id=user_id)
         return None, []
 
 @router.message(CommandStart())
@@ -114,14 +118,14 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
              except: pass
              
          msg_text = l10n.format_value("account-found-manual", {
-             "username": found_manual_acc.get('username', 'Unknown'),
+             "username": found_manual.get('username', 'Unknown'),
              "tariff": "Manual/Imported", 
              "expire": exp_date
          })
          
          ikb = types.InlineKeyboardMarkup(inline_keyboard=[
              [types.InlineKeyboardButton(text=l10n.format_value("btn-create-new"), callback_data="req_trial_new")],
-             [types.InlineKeyboardButton(text=l10n.format_value("btn-use-existing"), callback_data=f"link_acc_{found_manual_acc['uuid']}")]
+             [types.InlineKeyboardButton(text=l10n.format_value("btn-use-existing"), callback_data=f"link_acc_{found_manual['uuid']}")]
          ])
          await message.answer(msg_text, reply_markup=ikb, parse_mode="Markdown")
 
@@ -212,7 +216,7 @@ async def process_trial(message: types.Message, session, l10n: FluentLocalizatio
                 if raw_user and 'response' in raw_user:
                     found_user_data = raw_user['response']
                 else:
-                    found_user_data = raw_user
+                    found_user_data = raw
              except Exception:
                 # If 404 or other error, assume user not found via UUID
                 found_user_data = None
@@ -351,9 +355,6 @@ async def process_trial(message: types.Message, session, l10n: FluentLocalizatio
              # If found_user_data is None but we are here -> Fallthrough to create new order.
              pass
 
-        # If we are here -> Proceed to create order
-        pass
-
     except Exception as e:
         logger.error("trial_check_error", error=str(e))
         await message.answer("❌ Service temporarily unavailable. Please try again later.")
@@ -406,11 +407,14 @@ async def generate_profile_content(user_id, session, l10n):
                 if dt.tzinfo is None:
                     dt = dt.replace(tzinfo=timezone.utc)
                 
+                msk_tz = timezone(timedelta(hours=3))
+                date_str = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
+                
                 now_utc = datetime.now(timezone.utc)
                 if dt > now_utc:
-                    msk_tz = timezone(timedelta(hours=3))
-                    date_str = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
                     formatted_status = l10n.format_value("profile-expiry", {"date": date_str})
+                else:
+                    formatted_status = l10n.format_value("subscription-expired", {"date": date_str})
             except:
                 pass
         
@@ -482,7 +486,13 @@ async def generate_profile_content(user_id, session, l10n):
                     if edt.tzinfo is None: edt = edt.replace(tzinfo=timezone.utc)
                     msk_tz = timezone(timedelta(hours=3))
                     date_str = edt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
-                    exp_str = l10n.format_value("profile-expiry", {"date": date_str})
+                    
+                    now_utc = datetime.now(timezone.utc)
+                    if edt > now_utc:
+                        exp_str = l10n.format_value("profile-expiry", {"date": date_str})
+                    else:
+                        exp_str = l10n.format_value("subscription-expired", {"date": date_str})
+                        
                 except: pass
                 
             # Traffic

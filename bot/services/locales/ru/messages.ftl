@@ -37,6 +37,7 @@ profile-account-item =
 profile-link = 🔗 Ссылка: { $link }
 
 subscription-active = ✅ Активна до { $date }
+subscription-expired = ❌ Истекла { $date }
 subscription-none = ❌ Нет активной подписки
 
 btn-buy = 🛒 Купить подписку

@@ -37,6 +37,7 @@ profile-account-item =
 profile-link = 🔗 Link: { $link }
 
 subscription-active = ✅ Active until { $date }
+subscription-expired = ❌ Expired on { $date }
 subscription-none = ❌ No active subscription
 
 btn-buy = 🛒 Buy Subscription
