@@ -113,8 +113,13 @@ class RemnawaveAPI:
         # Remnawave expects ISO string
         return await self.update_user(uuid, {"expireAt": new_expire.isoformat().replace("+00:00", "Z")})
 
-    async def get_users(self, search: str = None):
-        params = {}
+    async def get_users(self, search: str = None, limit: int = 100, offset: int = 0):
+        params = {
+            "limit": limit,
+            "offset": offset,
+            "page": (offset // limit) + 1, # Try page param
+            "size": limit # Try size param
+        }
         if search:
             params['search'] = search
         
@@ -148,6 +153,24 @@ class RemnawaveAPI:
         logger.info("adding_user_to_squad_via_patch", user_uuid=user_uuid, squad_uuid=squad_uuid)
         return await self.update_user(user_uuid, {
             "activeInternalSquads": [squad_uuid]
+        })
+
+    async def get_user_devices(self, user_uuid: str):
+        # API seems to ignore userId filter and returns global list.
+        # We must filter manually.
+        # API uses 'size' param, not 'limit'. default 25.
+        response = await self._request("GET", "hwid/devices?size=1000") 
+        if response and 'response' in response:
+             all_devices = response['response'].get('devices', [])
+             # Filter strictly by UUID
+             return [d for d in all_devices if d.get('userUuid') == user_uuid]
+        return []
+
+    async def delete_user_device(self, hwid: str, user_uuid: str):
+        # API requires userUuid for deletion validation
+        return await self._request("POST", "hwid/devices/delete", {
+            "hwid": hwid,
+            "userUuid": user_uuid
         })
 
 api = RemnawaveAPI()
