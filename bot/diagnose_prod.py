@@ -20,6 +20,7 @@ class MockL10n:
 
 import aiohttp
 
+async def main():
     # override url
     url = "https://catapult.cyni.cc/api/users"
     print(f"DEBUG: Forcing URL: {url}")
@@ -51,8 +52,6 @@ import aiohttp
                          print(f"First user: {users[0].get('username')}")
                  except:
                      pass
-
-
-
+                     
 if __name__ == "__main__":
     asyncio.run(main())
