@@ -20,9 +20,10 @@ class MockL10n:
 
 import aiohttp
 
-async def main():
-    print(f"DEBUG: Config Remnawave URL: {config.remnawave_url}")
-    url = f"{config.remnawave_url}/api/users"
+    # override url
+    url = "https://catapult.cyni.cc/api/users"
+    print(f"DEBUG: Forcing URL: {url}")
+    
     headers = {
         "Authorization": f"Bearer {config.remnawave_api_key.get_secret_value()}",
         "Content-Type": "application/json",
@@ -35,7 +36,21 @@ async def main():
         async with session.get(url, headers=headers, params=params) as response:
             print(f"Status: {response.status}")
             text = await response.text()
-            print(f"Body: {text[:500]}...") # Print first 500 chars
+            print(f"Body len: {len(text)}")
+            print(f"Body start: {text[:200]}")
+            if response.ok:
+                 try:
+                     data = await response.json()
+                     # Handle list or dict
+                     users = []
+                     if isinstance(data, list): users = data
+                     elif isinstance(data, dict): users = data.get('users', []) or data.get('data', [])
+                     
+                     print(f"User count: {len(users)}")
+                     if users:
+                         print(f"First user: {users[0].get('username')}")
+                 except:
+                     pass
 
 
 
