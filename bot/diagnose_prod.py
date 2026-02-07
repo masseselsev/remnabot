@@ -20,25 +20,28 @@ class MockL10n:
 
 async def main():
     print(f"DEBUG: Config Remnawave URL: {config.remnawave_url}")
-    print(f"DEBUG: Global API Base URL: {global_api.base_url}")
-    print(f"DEBUG: Global API Key Len: {len(global_api.api_key)}")
     
-    print("--- Testing Global API directly ---")
-    try:
-        users = await global_api.get_users(search="85751735")
-        print(f"Global API list len: {len(users) if isinstance(users, list) else 'Not List'}")
-    except Exception as e:
-        print(f"Global API Error: {e}")
-
-    print("--- Testing NEW API Instance ---")
-    local_api = RemnawaveAPI()
-    print(f"DEBUG: Local API Base URL: {local_api.base_url}")
-    print(f"DEBUG: Local API Key Len: {len(local_api.api_key)}")
-    try:
-        users_local = await local_api.get_users(search="85751735")
-        print(f"Local API list len: {len(users_local) if isinstance(users_local, list) else 'Not List'}")
-    except Exception as e:
-        print(f"Local API Error: {e}")
+    queries = [
+        {"search": "85751735"},
+        {"search": "tg_85751735"},
+        {"search": "Masse13"},
+        {"limit": 10},
+        {} # Default
+    ]
+    
+    for q in queries:
+        print(f"--- Query: {q} ---")
+        try:
+            users = await global_api.get_users(**q)
+            count = len(users) if isinstance(users, list) else "Not List"
+            print(f"Result count: {count}")
+            if isinstance(users, list) and count > 0:
+                print(f"First user: {users[0].get('username')}")
+                # Check for masse13
+                found = any(str(u.get('telegramId')) == "85751735" for u in users)
+                print(f"Found 85751735: {found}")
+        except Exception as e:
+            print(f"Error: {e}")
 
 
 
