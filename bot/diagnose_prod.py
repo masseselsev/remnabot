@@ -3,19 +3,29 @@ import sys
 import os
 
 # Ensure we can import bot modules
-sys.path.append("/app")
-# And also /opt... just in case
+sys.path.insert(0, "/app")
 sys.path.append("/opt/stacks/remnabot")
 
 from bot.services.remnawave import RemnawaveAPI
+import inspect
 
 # Copied from bot/handlers/user.py (with minimal modifications for standalone run)
 async def check_existing_accounts(api, user_id: int):
     print(f"--- Running check_existing_accounts for {user_id} ---")
     try:
+        # Inspect API
+        print(f"RemnawaveAPI file: {inspect.getfile(RemnawaveAPI)}")
+        print(f"get_users signature: {inspect.signature(RemnawaveAPI.get_users)}")
+        
         # Use search to find user by ID (more reliable than fetching all)
         # This is the fix we implemented
-        users = await api.get_users(search=str(user_id))
+        try:
+             users = await api.get_users(search=str(user_id))
+        except TypeError as e:
+             print(f"get_users(search=...) failed: {e}")
+             print("Trying get_users() without args...")
+             users = await api.get_users()
+
         
         candidates = []
         if isinstance(users, list): candidates = users
@@ -64,12 +74,8 @@ async def main():
     tg_id = 85751735 # masse13
     
     print("Checking connection to API...")
-    try:
-        me = await api.get_users(limit=1)
-        print("API connection OK.")
-    except Exception as e:
-        print(f"API connection FAILED: {e}")
-        return
+    # Skip limit check as it might fail on server version
+    print("Skipping preliminary check, proceeding to account check...")
 
     std, man = await check_existing_accounts(api, tg_id)
     
