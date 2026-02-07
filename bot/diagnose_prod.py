@@ -37,9 +37,9 @@ async def main():
     # Usually it is postgresql+asyncpg://user:pass@db:5432/db
     # Inside docker 'db' hostname resolves.
     
-    from bot.database.core import async_session_maker
+    from bot.database.core import async_session
     
-    async with async_session_maker() as session:
+    async with async_session() as session:
         print("Running generate_profile_content...")
         text, kb = await generate_profile_content(tg_id, session, MockL10n())
         print("--- PROFILE TEXT ---")
