@@ -9,54 +9,7 @@ sys.path.append("/opt/stacks/remnabot")
 from bot.services.remnawave import RemnawaveAPI
 import inspect
 
-# Copied from bot/handlers/user.py (with minimal modifications for standalone run)
-async def check_existing_accounts(api, user_id: int):
-    print(f"--- Running check_existing_accounts for {user_id} ---")
-    try:
-        # Use search to find user by ID (more reliable than fetching all)
-        try:
-             users = await api.get_users(search=str(user_id))
-        except TypeError as e:
-             print(f"get_users(search=...) failed: {e}")
-             users = await api.get_users()
-
-        candidates = []
-        if isinstance(users, list): candidates = users
-        elif isinstance(users, dict):
-             if 'response' in users:
-                 r = users['response']
-                 if isinstance(r, list): candidates = r
-                 elif isinstance(r, dict):
-                     candidates = r.get('users', []) or r.get('data', [])
-
-        standard = None
-        manual = []
-        
-        target_username = f"tg_{user_id}"
-        
-        print(f"Candidates found: {len(candidates)}")
-
-        for u in candidates:
-            tid = u.get('telegramId')
-            uname = u.get('username')
-            
-            # API search is fuzzy, so verify ID or exact username
-            is_match = False
-            if str(tid) == str(user_id): is_match = True
-            if uname == target_username: is_match = True
-            
-            if is_match:
-                if uname == target_username:
-                    standard = u
-                else:
-                    manual.append(u)
-            
-        return standard, manual
-    except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return None, []
+from bot.handlers.user import check_existing_accounts
 
 async def main():
     api = RemnawaveAPI()
@@ -66,7 +19,7 @@ async def main():
     # Skip limit check as it might fail on server version
     print("Skipping preliminary check, proceeding to account check...")
 
-    std, man = await check_existing_accounts(api, tg_id)
+    std, man = await check_existing_accounts(tg_id)
     
     print(f"Standard Account: {std['username'] if std else 'None'}")
     if std:
