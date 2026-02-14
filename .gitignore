@@ -7,3 +7,8 @@ logs/
 # Logs
 log_dump.txt
 *.log
+output.txt
+
+# Virtual Environment
+.venv/
+deploy_script.py
