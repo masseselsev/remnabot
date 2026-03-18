@@ -1,4 +1,5 @@
 import aiohttp
+import ssl
 from bot.config import config
 import structlog
 
@@ -16,7 +17,8 @@ class RemnawaveAPI:
 
     async def _request(self, method: str, endpoint: str, data: dict = None):
         url = f"{self.base_url}/api/{endpoint.lstrip('/')}"
-        async with aiohttp.ClientSession() as session:
+        connector = aiohttp.TCPConnector(ssl=False)
+        async with aiohttp.ClientSession(connector=connector) as session:
             try:
                 async with session.request(method, url, headers=self.headers, json=data) as response:
                     if not response.ok:
@@ -124,7 +126,8 @@ class RemnawaveAPI:
             params['search'] = search
         
         url = f"{self.base_url}/api/users"
-        async with aiohttp.ClientSession() as session:
+        connector = aiohttp.TCPConnector(ssl=False)
+        async with aiohttp.ClientSession(connector=connector) as session:
             async with session.get(url, headers=self.headers, params=params) as response:
                 if not response.ok:
                     text = await response.text()
