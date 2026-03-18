@@ -12,3 +12,5 @@ output.txt
 # Virtual Environment
 .venv/
 deploy_script.py
+
+credentials
