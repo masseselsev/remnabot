@@ -1,6 +1,7 @@
 import asyncio
 import structlog
 from aiogram import Bot, Dispatcher
+from aiogram.types import BufferedInputFile
 from bot.config import config
 from bot.database.core import init_db
 from bot.handlers import user, shop, support, admin_panel, fallback
@@ -45,7 +46,17 @@ async def main():
         if not webhook_path or webhook_path == "":
             webhook_path = "/"
             
-        await bot.set_webhook(config.webhook_url, drop_pending_updates=True)
+        # Optionally pass self-signed certificate to Telegram
+        certificate = None
+        if config.webhook_cert_path:
+            try:
+                with open(config.webhook_cert_path, "rb") as f:
+                    certificate = BufferedInputFile(f.read(), filename="cert.pem")
+                logger.info("Loaded webhook certificate", path=config.webhook_cert_path)
+            except Exception as e:
+                logger.warning("Could not load webhook certificate", path=config.webhook_cert_path, error=str(e))
+
+        await bot.set_webhook(config.webhook_url, certificate=certificate, drop_pending_updates=True)
         
         app = web.Application()
         # Register Payments Webhook

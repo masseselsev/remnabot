@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     webhook_url: Optional[str] = None
     webhook_host: str = "0.0.0.0"
     webhook_port: int = 8000
+    webhook_cert_path: Optional[str] = None  # Path to self-signed cert .pem for Telegram
 
     # Admin
     admin_group_id: int
