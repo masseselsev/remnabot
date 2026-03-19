@@ -15,37 +15,29 @@ class RemnawaveAPI:
             "Accept": "application/json"
         }
 
-    async def _request(self, method: str, endpoint: str, data: dict = None):
+    async def _request(self, method: str, endpoint: str, data: dict = None, params: dict = None):
         url = f"{self.base_url}/api/{endpoint.lstrip('/')}"
         
         # We use ssl=False because Remnawave API might be behind a self-signed certificate,
         # especially when accessed via direct IP (e.g. ZeroTier) for performance.
         connector = aiohttp.TCPConnector(ssl=False)
         
+        logger.debug("remnawave_outgoing", method=method, url=url, params=params)
+
         async with aiohttp.ClientSession(connector=connector) as session:
             try:
-                async with session.request(method, url, headers=self.headers, json=data) as response:
+                async with session.request(method, url, headers=self.headers, json=data, params=params) as response:
                     if not response.ok:
                         text = await response.text()
-                        if response.status == 404:
-                            logger.debug("remnawave_api_404", method=method, url=url, body=text)
-                        else:
-                            logger.error("remnawave_api_fail", 
-                                         method=method, 
-                                         url=url,
-                                         status=response.status, 
-                                         body=text)
+                        logger.error("remnawave_api_fail", 
+                                     method=method, 
+                                     url=url,
+                                     status=response.status, 
+                                     body=text)
                     response.raise_for_status()
                     return await response.json()
             except Exception as e:
-                # If it's a 404 error from raise_for_status, we might want to log it as debug or info
-                is_404 = False
-                if hasattr(e, 'status') and e.status == 404: is_404 = True
-                
-                if is_404:
-                    logger.debug("remnawave_api_exception_404", method=method, endpoint=endpoint, error=str(e))
-                else:
-                    logger.error("remnawave_api_exception", method=method, endpoint=endpoint, error=str(e))
+                logger.error("remnawave_api_exception", method=method, endpoint=endpoint, error=str(e))
                 raise e
 
     async def create_user(self, telegram_id: int, username: str):
@@ -119,21 +111,13 @@ class RemnawaveAPI:
         params = {
             "limit": limit,
             "offset": offset,
-            "page": (offset // limit) + 1, # Try page param
-            "size": limit # Try size param
+            "page": (offset // limit) + 1,
+            "size": limit
         }
         if search:
             params['search'] = search
         
-        url = f"{self.base_url}/api/users"
-        connector = aiohttp.TCPConnector(ssl=False)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            async with session.get(url, headers=self.headers, params=params) as response:
-                if not response.ok:
-                    text = await response.text()
-                    logger.error("remnawave_get_users_fail", status=response.status, body=text)
-                    return []
-                return await response.json()
+        return await self._request("GET", "users", params=params)
 
     async def get_squads(self):
         return await self._request("GET", "internal-squads")
