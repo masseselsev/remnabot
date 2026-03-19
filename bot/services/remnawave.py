@@ -17,7 +17,11 @@ class RemnawaveAPI:
 
     async def _request(self, method: str, endpoint: str, data: dict = None):
         url = f"{self.base_url}/api/{endpoint.lstrip('/')}"
+        
+        # We use ssl=False because Remnawave API might be behind a self-signed certificate,
+        # especially when accessed via direct IP (e.g. ZeroTier) for performance.
         connector = aiohttp.TCPConnector(ssl=False)
+        
         async with aiohttp.ClientSession(connector=connector) as session:
             try:
                 async with session.request(method, url, headers=self.headers, json=data) as response:
@@ -34,10 +38,6 @@ class RemnawaveAPI:
                     response.raise_for_status()
                     return await response.json()
             except Exception as e:
-                if "example.com" in self.base_url:
-                     logger.warning("Using MOCK API response")
-                     return {"uuid": "mock-uuid-1234", "status": "active"}
-                
                 # If it's a 404 error from raise_for_status, we might want to log it as debug or info
                 is_404 = False
                 if hasattr(e, 'status') and e.status == 404: is_404 = True

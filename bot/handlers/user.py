@@ -181,8 +181,8 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
                  })
                  await message.answer(msg, parse_mode="HTML")
                  
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("start_active_sub_info_failed", error=str(e))
 
 @router.message(F.text == "🎁 Try for free")
 @router.message(F.text == "🎁 Попробовать бесплатно")
@@ -264,7 +264,7 @@ async def process_trial(message: types.Message, session, l10n: FluentLocalizatio
         if found_user_data:
             tags = found_user_data.get('tag') or ""
 
-        logger.info("trial_check_debug", 
+        logger.debug("trial_check_debug", 
                    user_id=user.id,
                    rw_uuid=rw_uuid,
                    found_in_api=bool(found_user_data),

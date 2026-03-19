@@ -46,7 +46,9 @@ async def main():
         if not webhook_path or webhook_path == "":
             webhook_path = "/"
             
-        # Optionally pass self-signed certificate to Telegram
+        # When using self-signed certificates (e.g. via Caddy/Nginx with local SSL),
+        # Telegram requires the PUBLIC certificate (.pem) to be uploaded via API 
+        # as a BufferedInputFile during the set_webhook call.
         certificate = None
         if config.webhook_cert_path:
             try:
