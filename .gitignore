@@ -17,3 +17,6 @@ credentials
 cert.pem
 key.pem
 Caddyfile
+
+.continue/
+api-1.json

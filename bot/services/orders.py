@@ -114,11 +114,13 @@ async def fulfill_order(order_id: int, session, payment_id: str = None) -> bool:
 
         logger.info("applying_tariff_settings", uuid=rw_uuid, tariff_limit=target_traffic_gb, duration=target_duration_days)
         
-        # Optimization: Fetch user ONCE and calculate all updates
+        # Fetch user state to calculate updates
         rw_user = await api.get_user(rw_uuid)
-        current_tags = rw_user.get('tag') or ""
+
+        # Tags (Spec: single string matching ^[A-Z0-9_]+$)
+        current_tag = rw_user.get('tag') or ""
         
-        if tariff.is_trial and "TRIAL_YES" in current_tags:
+        if tariff.is_trial and current_tag == "TRIAL_YES":
              logger.warning("fulfillment_rejected", reason="Trial already used (tag found)")
              return False
 
@@ -128,15 +130,12 @@ async def fulfill_order(order_id: int, session, payment_id: str = None) -> bool:
         }
 
         # Tags
-        # Docs confirm 'tag' is a string.
         if tariff.is_trial:
-             new_tag_val = f"{current_tags},TRIAL_YES" if current_tags else "TRIAL_YES"
-             if "TRIAL_YES" not in current_tags:
-                 updates["tag"] = new_tag_val
+             updates["tag"] = "TRIAL_YES"
 
         # Traffic
         if target_traffic_gb:
-             current_limit = rw_user.get('trafficLimitBytes', 0) or 0
+             current_limit = rw_user.get('trafficLimitBytes', 0) or rw_user.get('dataLimit', 0) or 0
              bytes_to_add = int(target_traffic_gb * 1024 * 1024 * 1024)
              updates["trafficLimitBytes"] = int(current_limit) + bytes_to_add
              updates["trafficLimitStrategy"] = "NO_RESET"
@@ -144,24 +143,25 @@ async def fulfill_order(order_id: int, session, payment_id: str = None) -> bool:
         # Duration
         if target_duration_days:
              current_expire = rw_user.get('expireAt')
-             import time
-             from datetime import datetime, timedelta
+             from datetime import datetime, timedelta, timezone
              from dateutil import parser
              
-             now_ts = time.time()
-             base_ts = now_ts
+             now = datetime.now(timezone.utc)
+             base_dt = now
              
              if current_expire:
                  try:
                      dt = parser.isoparse(current_expire)
-                     ts = dt.timestamp()
-                     if ts > now_ts:
-                         base_ts = ts
+                     if dt.tzinfo is None:
+                         dt = dt.replace(tzinfo=timezone.utc)
+                     if dt > now:
+                         base_dt = dt
                  except Exception:
                      pass
              
-             new_expire_dt = datetime.fromtimestamp(base_ts) + timedelta(days=target_duration_days)
-             updates["expireAt"] = new_expire_dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+             new_expire_dt = base_dt + timedelta(days=target_duration_days)
+             # Remnawave expects ISO string with Z
+             updates["expireAt"] = new_expire_dt.isoformat().replace("+00:00", "Z")
 
         # Apply updates
         update_resp = await api.update_user(rw_uuid, updates)

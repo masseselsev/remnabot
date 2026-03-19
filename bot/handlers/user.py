@@ -23,18 +23,27 @@ async def check_existing_accounts(user_id: int):
     logger = structlog.get_logger()
 
     try:
-        # Use search to find user by ID (more reliable than fetching all)
-        users = await api.get_users(search=str(user_id))
-        
+        # Attempt direct lookup by Telegram ID first (official spec endpoint)
         candidates = []
-        if isinstance(users, list): candidates = users
-        elif isinstance(users, dict):
-             if 'response' in users:
-                 r = users['response']
-                 if isinstance(r, list): candidates = r
-                 elif isinstance(r, dict):
-                     candidates = r.get('users', []) or r.get('data', [])
-
+        try:
+            direct_user = await api.get_user_by_telegram_id(user_id)
+            if direct_user and isinstance(direct_user, dict) and (direct_user.get('uuid') or direct_user.get('username')):
+                candidates = [direct_user]
+        except Exception:
+            # Fallback to search if direct lookup fails
+            resp = await api.get_users(search=str(user_id))
+            if isinstance(resp, list):
+                candidates = resp
+            elif isinstance(resp, dict):
+                # Try to find the list of users in various possible fields
+                candidates = resp.get('users') or resp.get('data') or resp.get('items') or []
+                if not isinstance(candidates, list):
+                    # If we got a dict that IS the user (unlikely for search but possible)
+                    if resp.get('uuid') or resp.get('username'):
+                        candidates = [resp]
+                    else:
+                        candidates = []
+        
         standard = None
         manual = []
         
@@ -139,11 +148,10 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
              from dateutil import parser
              from datetime import datetime, timezone, timedelta
              
-             # Get API User
-             rw_user = await api.get_user(user.remnawave_uuid)
-             data = rw_user.get('response', rw_user)
+             # Get API User (already unwrapped by _request)
+             data = await api.get_user(user.remnawave_uuid)
              
-             if not data: return 
+             if not data or not isinstance(data, dict): return 
 
              # Check Expiry
              expire_at = data.get('expireAt')
@@ -213,14 +221,10 @@ async def process_trial(message: types.Message, session, l10n: FluentLocalizatio
         found_user_data = None
         if rw_uuid:
              try:
-                raw_user = await api.get_user(rw_uuid)
-                # Unwrap if needed
-                if raw_user and 'response' in raw_user:
-                    found_user_data = raw_user['response']
-                else:
-                    found_user_data = raw
+                found_user_data = await api.get_user(rw_uuid)
+                if not found_user_data or not isinstance(found_user_data, dict) or not (found_user_data.get('uuid') or found_user_data.get('username')):
+                    found_user_data = None
              except Exception:
-                # If 404 or other error, assume user not found via UUID
                 found_user_data = None
         
         if not found_user_data:
@@ -379,11 +383,9 @@ async def generate_profile_content(user_id, session, l10n):
     
     if rw_uuid:
         try:
-            raw = await api.get_user(rw_uuid)
-            if raw and 'response' in raw:
-                found_user_data = raw['response']
-            else:
-                found_user_data = raw
+            found_user_data = await api.get_user(rw_uuid)
+            if not found_user_data or not isinstance(found_user_data, dict):
+                found_user_data = None
         except:
             found_user_data = None
     
@@ -1000,9 +1002,7 @@ async def execute_trial_creation(messageable, session, l10n: FluentLocalization,
         # Get connection info (Subscription URL)
         # Fetch fresh user data to get the correct subscription link
         try:
-             rw_user = await api.get_user(user.remnawave_uuid)
-             # Extract data handling nesting
-             data = rw_user.get('response') if 'response' in rw_user else rw_user
+             data = await api.get_user(user.remnawave_uuid)
              
              link = data.get('subscriptionUrl')
              if not link:

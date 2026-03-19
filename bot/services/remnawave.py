@@ -18,8 +18,8 @@ class RemnawaveAPI:
     async def _request(self, method: str, endpoint: str, data: dict = None, params: dict = None):
         url = f"{self.base_url}/api/{endpoint.lstrip('/')}"
         
-        # We use ssl=False because Remnawave API might be behind a self-signed certificate,
-        # especially when accessed via direct IP (e.g. ZeroTier) for performance.
+        # Consistent connector across requests for pooling would be better, but we keep isolated for now.
+        # We ensure SSL is handled as per env requirements.
         connector = aiohttp.TCPConnector(ssl=False)
         
         logger.debug("remnawave_outgoing", method=method, url=url, params=params)
@@ -27,58 +27,77 @@ class RemnawaveAPI:
         async with aiohttp.ClientSession(connector=connector) as session:
             try:
                 async with session.request(method, url, headers=self.headers, json=data, params=params) as response:
+                    raw_text = await response.text()
                     if not response.ok:
-                        text = await response.text()
                         logger.error("remnawave_api_fail", 
                                      method=method, 
                                      url=url,
                                      status=response.status, 
-                                     body=text)
+                                     body=raw_text)
                     response.raise_for_status()
-                    return await response.json()
+                    
+                    try:
+                        res = await response.json()
+                    except:
+                        # Some endpoints might return empty/text
+                        return {"text": raw_text}
+
+                    # Unwrap common wrappers in Remnawave (response or data)
+                    if isinstance(res, dict):
+                        # Some versions use 'data', some use 'response'
+                        return res.get('response') or res.get('data') or res
+                    return res
+
             except Exception as e:
                 logger.error("remnawave_api_exception", method=method, endpoint=endpoint, error=str(e))
                 raise e
 
     async def create_user(self, telegram_id: int, username: str):
-        # Guessing endpoint structure based on common panels
-        # Usually POST /api/users
-        from datetime import datetime
+        from datetime import datetime, timedelta, timezone
+        # Spec (CreateUserRequestDto): username (req), expireAt (req), description, tag, telegramId, etc.
+        expire_dt = datetime.now(timezone.utc) + timedelta(minutes=5)
+        
         data = {
             "username": f"tg_{telegram_id}",
             "telegramId": telegram_id,
-            "note": f"User {username} ({telegram_id})",
+            "description": f"User {username} ({telegram_id})",
             "status": "ACTIVE",
             "proxies": {},
             "inbounds": {},
-            "expireAt": datetime.utcnow().isoformat() + "Z"
+            "expireAt": expire_dt.isoformat().replace("+00:00", "Z")
         }
         return await self._request("POST", "users", data)
 
     async def create_custom_user(self, username: str, note: str = ""):
-        from datetime import datetime
+        from datetime import datetime, timedelta, timezone
+        expire_dt = datetime.now(timezone.utc) + timedelta(minutes=5)
         data = {
             "username": username,
             "status": "ACTIVE",
-            "note": note,
             "description": note,
             "proxies": {},
             "inbounds": {},
-            "expireAt": datetime.utcnow().isoformat() + "Z"
+            "expireAt": expire_dt.isoformat().replace("+00:00", "Z")
         }
         return await self._request("POST", "users", data)
 
+    async def get_user_by_telegram_id(self, telegram_id: int):
+        # Spec: GET /api/users/by-telegram-id/{telegramId}
+        return await self._request("GET", f"users/by-telegram-id/{telegram_id}")
+
     async def get_user(self, uuid: str):
+        # Spec: GET /api/users/{uuid}
         return await self._request("GET", f"users/{uuid}")
 
     async def update_user(self, uuid: str, data: dict):
+        # Spec: PATCH /api/users
+        # Body: UpdateUserRequestDto (uuid is used to identify the user)
         payload = data.copy()
         payload['uuid'] = uuid
-        # Per docs: PATCH /api/users
         return await self._request("PATCH", "users", payload)
 
     async def add_duration(self, uuid: str, days: int):
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         import dateutil.parser
 
         user = await self.get_user(uuid)
@@ -86,33 +105,26 @@ class RemnawaveAPI:
         
         if current_expire:
             try:
-                # Handle Z or timezone
                 expire_dt = dateutil.parser.isoparse(current_expire)
-                # Ensure we are working with UTC (naive or aware)
                 if expire_dt.tzinfo is None:
-                    expire_dt = expire_dt.replace(tzinfo=None) # naive to naive
-                else:
-                    expire_dt = expire_dt.astimezone(datetime.utcnow().tzinfo)
-
-                now = datetime.now(expire_dt.tzinfo) if expire_dt.tzinfo else datetime.utcnow()
+                    expire_dt = expire_dt.replace(tzinfo=timezone.utc)
                 
+                now = datetime.now(timezone.utc)
                 if expire_dt < now:
                     expire_dt = now
             except:
-                expire_dt = datetime.utcnow()
+                expire_dt = datetime.now(timezone.utc)
         else:
-            expire_dt = datetime.utcnow()
+            expire_dt = datetime.now(timezone.utc)
             
         new_expire = expire_dt + timedelta(days=days)
-        # Remnawave expects ISO string
         return await self.update_user(uuid, {"expireAt": new_expire.isoformat().replace("+00:00", "Z")})
 
     async def get_users(self, search: str = None, limit: int = 100, offset: int = 0):
+        # Spec: GET /api/users (supports pagination with size and start)
         params = {
-            "limit": limit,
-            "offset": offset,
-            "page": (offset // limit) + 1,
-            "size": limit
+            "size": limit,
+            "start": offset
         }
         if search:
             params['search'] = search
@@ -146,11 +158,17 @@ class RemnawaveAPI:
         # API seems to ignore userId filter and returns global list.
         # We must filter manually.
         # API uses 'size' param, not 'limit'. default 25.
-        response = await self._request("GET", "hwid/devices?size=1000") 
-        if response and 'response' in response:
-             all_devices = response['response'].get('devices', [])
+        res = await self._request("GET", "hwid/devices?size=1000") 
+        if res and isinstance(res, dict):
+             # Some panels wrap inside another 'devices' or 'response' object
+             all_devices = res.get('devices') or res.get('response', {}).get('devices') or []
+             if not isinstance(all_devices, list) and isinstance(res, list):
+                 all_devices = res
              # Filter strictly by UUID
-             return [d for d in all_devices if d.get('userUuid') == user_uuid]
+             if isinstance(all_devices, list):
+                return [d for d in all_devices if d.get('userUuid') == user_uuid]
+        elif isinstance(res, list):
+             return [d for d in res if d.get('userUuid') == user_uuid]
         return []
 
     async def delete_user_device(self, hwid: str, user_uuid: str):
