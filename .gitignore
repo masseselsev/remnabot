@@ -14,3 +14,6 @@ output.txt
 deploy_script.py
 
 credentials
+cert.pem
+key.pem
+Caddyfile
