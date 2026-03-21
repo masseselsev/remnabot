@@ -253,13 +253,97 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
 @router.message(F.text == "🎁 Try for free")
 @router.message(F.text == "🎁 Попробовать бесплатно")
 async def process_trial(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    from bot.services.remnawave import api
+    from bot.config import config
     user = await session.get(models.User, message.from_user.id)
-    if user and user.is_trial_used:
-         await message.answer(l10n.format_value("trial-already-used"))
-         return
+    
+    # 1. Check if user already has a trial via API (Source of Truth)
+    rw_user = None
+    if user.remnawave_uuid:
+        try:
+            rw_user = await api.get_user(user.remnawave_uuid)
+        except: pass
+    
+    if not rw_user:
+        try:
+            # Search by dedicated name
+            search_name = f"tg_{user.id}"
+            candidates = await api.get_users(search=search_name)
+            
+            # Extract list from various possible response formats
+            users_list = []
+            if isinstance(candidates, list): users_list = candidates
+            elif isinstance(candidates, dict):
+                 for key in ['users', 'data', 'items', 'response']:
+                     if key in candidates:
+                         val = candidates[key]
+                         if isinstance(val, list): users_list = val
+                         elif isinstance(val, dict) and 'users' in val: users_list = val['users']
+                         break
+            
+            for u in users_list:
+                if u.get('username') == search_name:
+                    rw_user = u
+                    user.remnawave_uuid = u.get('uuid') or u.get('id')
+                    await session.commit()
+                    break
+        except: pass
 
+    if rw_user:
+        tags = rw_user.get('tag') or ""
+        if "TRIAL_YES" in tags:
+            # User already has trial. Show info.
+            # We reuse the display logic from execute_trial_creation but with msg-active instead of msg-activated
+            try:
+                # We need to render the trial info similar to execute_trial_creation
+                # (I'll define a small helper or just do it here to avoid duplication issues)
+                await show_active_trial_info(message, rw_user, user.remnawave_uuid, l10n)
+                return
+            except Exception as e:
+                import structlog
+                logger = structlog.get_logger()
+                logger.error("show_trial_info_failed", error=str(e))
+
+    # 2. No active trial found on remote -> Proceed to promo request
     await message.answer(l10n.format_value("trial-promo-request"))
     await state.set_state(UserStates.trial_promo)
+
+async def show_active_trial_info(messageable, data, uuid, l10n: FluentLocalization):
+    from bot.config import config
+    from dateutil import parser
+    from datetime import datetime, timezone, timedelta
+    
+    link = data.get('subscriptionUrl')
+    if not link:
+        link = f"{config.remnawave_url}/sub/{uuid}"
+    
+    traffic_bytes = data.get('trafficLimitBytes') or data.get('dataLimit') or 0
+    traffic_gb = round(int(traffic_bytes) / (1024**3), 1)
+    
+    expire_at_str = data.get('expireAt')
+    expire_display = "Unlimited"
+    
+    if expire_at_str:
+        try:
+            dt = parser.isoparse(expire_at_str)
+            if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+            msk_tz = timezone(timedelta(hours=3))
+            dt_msk = dt.astimezone(msk_tz)
+            expire_display = dt_msk.strftime("%Y-%m-%d %H:%M MSK")
+        except: pass
+
+    msg_active = l10n.format_value("trial-active")
+    msg_traffic = l10n.format_value("trial-traffic", {"gb": traffic_gb})
+    msg_expires = l10n.format_value("trial-expires", {"date": expire_display})
+    msg_link = l10n.format_value("trial-link-caption")
+          
+    await messageable.answer(
+        f"{msg_active}\n\n"
+        f"📊 {msg_traffic}\n"
+        f"⏳ {msg_expires}\n\n"
+        f"{msg_link}\n{link}",
+        disable_web_page_preview=True
+    )
 
 async def generate_profile_content(user_id, session, l10n):
     user = await session.get(models.User, user_id)
@@ -841,12 +925,6 @@ async def link_manual_account(callback: types.CallbackQuery, session, l10n: Flue
 
 @router.callback_query(F.data == "req_trial_new")
 async def request_new_trial_explicit(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
-    user_id = callback.from_user.id
-    user = await session.get(models.User, user_id)
-    if user and user.is_trial_used:
-         await callback.answer(l10n.format_value("trial-already-used"), show_alert=True)
-         return
-
     await callback.message.answer(l10n.format_value("trial-promo-request"))
     await state.set_state(UserStates.trial_promo)
     await callback.answer()
@@ -856,11 +934,6 @@ async def process_trial_promo(message: types.Message, state: FSMContext, session
     promo_code = message.text.strip()
     user = await session.get(models.User, message.from_user.id)
     
-    if user.is_trial_used:
-        await message.answer(l10n.format_value("trial-already-used"))
-        await state.clear()
-        return
-
     is_valid = False
     
     # Built-in: Current date (GMT+3)

@@ -187,7 +187,7 @@ async def fulfill_order(order_id: int, session, payment_id: str = None) -> bool:
              except Exception as e:
                 logger.error("squad_assignment_failed", error=str(e))
 
-        user.is_trial_used = True
+        # Trial handled by API tags
         
         order.status = models.OrderStatus.PAID
         await session.commit()
