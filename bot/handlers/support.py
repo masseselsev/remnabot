@@ -9,17 +9,15 @@ router = Router()
 @router.message(F.text == "🆘 Support")
 @router.message(F.text == "🆘 Поддержка")
 async def cmd_support(message: types.Message, l10n: FluentLocalization):
-    # Support Link
-    # ID provided for DM: 1073332473875
+    # Support Link (Invite link provided by user)
     # Since we can't open link from reply keyboard, we send a message with an inline button.
-    # Format: tg://user?id=1073332473875
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="💬 Open Support Chat / Открыть чат", url="tg://user?id=1073332473875")]
+        [types.InlineKeyboardButton(text="💬 Поддержка / Support", url="https://t.me/+dP0XLHQv-f8zMjk6")]
     ])
     
     msg_text = (
-        "По всем вопросам обращайтесь в чат поддержки:\n"
-        "For any questions, please contact support chat:"
+        "Для получения технической поддержки перейдите сюда: https://t.me/+dP0XLHQv-f8zMjk6\n"
+        "и напишите в личные сообщения канала."
     )
     await message.answer(msg_text, reply_markup=kb)
