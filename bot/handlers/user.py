@@ -257,8 +257,16 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                     ]
                     msg_lines.append("\n".join(item))
 
-            if len(msg_lines) > 1:
-                await message.answer("\n\n──────────────\n".join(msg_lines), parse_mode="HTML", disable_web_page_preview=True)
+            if msg_lines:
+                # The first element is the title, the rest are items.
+                title = msg_lines[0]
+                items = msg_lines[1:]
+                
+                final_text = title
+                if items:
+                    final_text += "\n\n" + "\n\n──────────────\n".join(items)
+                
+                await message.answer(final_text, parse_mode="HTML", disable_web_page_preview=True)
                  
     except Exception as e:
         logger.debug("start_active_subs_info_failed", error=str(e))
