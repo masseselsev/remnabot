@@ -9,7 +9,51 @@ from fluent.runtime import FluentLocalization
 from datetime import datetime, timezone, timedelta
 from dateutil import parser
 
+from aiogram.fsm.context import FSMContext
+from bot.services.settings import SettingsService
+import structlog
+
 router = Router()
+
+logger = structlog.get_logger()
+
+def get_traffic_bar(percent: float) -> str:
+    """
+    Logic: 5 blocks (20% each).
+    Each 20% block color matches the REMAINING capacity in that block:
+    - 20-16 remaining: Green 🟩
+    - 15-11 remaining: Yellow 🟨
+    - 10-6 remaining: Orange 🟧
+    - 5-0 remaining: Red 🟥
+    Full used blocks to the left are Red 🟥.
+    Full unused blocks to the right are Green 🟩.
+    """
+    bar = []
+    for i in range(5):
+        block_start = i * 20
+        block_end = (i + 1) * 20
+        
+        if percent >= block_end:
+            # Entirely used
+            bar.append("🟥")
+        elif percent <= block_start:
+            # Entirely unused
+            bar.append("🟩")
+        else:
+            # Current block (partially used)
+            used_in_block = percent - block_start
+            remaining_in_block = 20 - used_in_block
+            
+            if remaining_in_block >= 16:
+                bar.append("🟩")
+            elif remaining_in_block >= 11:
+                bar.append("🟨")
+            elif remaining_in_block >= 6:
+                bar.append("🟧")
+            else:
+                bar.append("🟥")
+    return "".join(bar)
+
 
 async def check_existing_accounts(user_id: int):
     """
@@ -73,7 +117,8 @@ async def check_existing_accounts(user_id: int):
         return None, []
 
 @router.message(CommandStart())
-async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
+async def cmd_start(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+
     # Create or update user
     stmt = select(models.User).where(models.User.id == message.from_user.id)
     result = await session.execute(stmt)
@@ -103,17 +148,30 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
             
     await session.commit()
 
-    # Welcome message
-    text = l10n.format_value("start-welcome", {"name": message.from_user.first_name})
+    # Welcome message from settings
+    lang_code = l10n._locales[0] if hasattr(l10n, '_locales') else 'ru'
+    welcome_setting = await SettingsService.get_setting(f"welcome_msg_{lang_code}")
+    
+    if not welcome_setting:
+        fallback_msg = "Welcome, {$name}!" if lang_code == 'en' else "Добро пожаловать, {$name}!"
+        welcome_text = fallback_msg.replace("{$name}", message.from_user.first_name)
+    else:
+        welcome_text = welcome_setting.replace("{$name}", message.from_user.first_name)
     
     # Keyboard
+    btn_shop = l10n.format_value("btn-shop")
+    btn_profile = l10n.format_value("btn-profile")
+    btn_trial = l10n.format_value("btn-trial")
+    btn_support = l10n.format_value("btn-support")
+    
     kb = [
-        [types.KeyboardButton(text=l10n.format_value("btn-shop")), types.KeyboardButton(text=l10n.format_value("btn-profile"))],
-        [types.KeyboardButton(text=l10n.format_value("btn-trial")), types.KeyboardButton(text=l10n.format_value("btn-support"))]
+        [types.KeyboardButton(text=btn_shop), types.KeyboardButton(text=btn_profile)],
+        [types.KeyboardButton(text=btn_trial), types.KeyboardButton(text=btn_support)]
     ]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     
-    await message.answer(text, reply_markup=keyboard)
+    await message.answer(welcome_text, reply_markup=keyboard)
+
 
     # 1. Manual Account Discovery Notification
     if found_manual_acc:
@@ -140,57 +198,71 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
          ])
          await message.answer(msg_text, reply_markup=ikb, parse_mode="Markdown")
 
-    # Check for active subscription (notify newly granted users)
-    if user.remnawave_uuid:
-        try:
-             from bot.services.remnawave import api
-             from html import escape
-             from dateutil import parser
-             from datetime import datetime, timezone, timedelta
-             
-             # Get API User (already unwrapped by _request)
-             data = await api.get_user(user.remnawave_uuid)
-             
-             if not data or not isinstance(data, dict): return 
+    # Check for ALL active subscriptions
+    try:
+        from bot.services.remnawave import api
+        from html import escape
+        
+        std_acc, manual_accs = await check_existing_accounts(message.from_user.id)
+        all_accs = []
+        if std_acc: all_accs.append(std_acc)
+        all_accs.extend(manual_accs)
+        
+        # Deduplicate by UUID
+        unique_accs = {a['uuid']: a for a in all_accs}.values()
+        
+        now_utc = datetime.now(timezone.utc)
+        msk_tz = timezone(timedelta(hours=3))
+        
+        msg_lines = []
+        if unique_accs:
+            msg_lines.append(f"<b>{l10n.format_value('start-active-subs-title') or 'ℹ️ Active Subscriptions:'}</b>")
+            
+            for idx, acc in enumerate(unique_accs, 1):
+                expire_at = acc.get('expireAt')
+                is_active = False
+                exp_date = "Unlimited"
+                
+                if expire_at:
+                    dt = parser.isoparse(expire_at)
+                    if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+                    if dt > now_utc:
+                        is_active = True
+                        exp_date = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
+                else:
+                    is_active = True # Unlimited
+                    
+                if is_active:
+                    # Traffic
+                    limit_bytes = acc.get('trafficLimitBytes') or 0
+                    used_bytes = acc.get('userTraffic', {}).get('usedTrafficBytes') or 0
+                    limit_gb = round(int(limit_bytes) / (1024**3), 1)
+                    used_gb = round(int(used_bytes) / (1024**3), 2)
+                    
+                    percent = 0
+                    if limit_bytes > 0:
+                        percent = round((used_bytes / limit_bytes) * 100, 1)
+                    
+                    bar_str = get_traffic_bar(percent)
+                    traffic_str = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "percent": percent, "bar": bar_str})
+                    link = acc.get('subscriptionUrl') or f"{config.remnawave_url}/sub/{acc['uuid']}"
+                    
+                    uname = acc.get('username', 'Unknown')
+                    
+                    item = [
+                        f"{idx}. 👤 <b>{escape(uname)}</b>",
+                        f"📅 {l10n.format_value('profile-expiry-caption') or 'Active until'} {exp_date}",
+                        f"📊 {traffic_str}",
+                        f"🔗 {l10n.format_value('profile-link-caption') or 'Link'}: {link}"
+                    ]
+                    msg_lines.append("\n".join(item))
 
-             # Check Expiry
-             expire_at = data.get('expireAt')
-             is_active = False
-             date_str = "Unlimited"
-             
-             if expire_at:
-                 dt = parser.isoparse(expire_at)
-                 if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
-                 now_utc = datetime.now(timezone.utc)
+            if len(msg_lines) > 1:
+                await message.answer("\n\n──────────────\n".join(msg_lines), parse_mode="HTML", disable_web_page_preview=True)
                  
-                 if dt > now_utc:
-                     is_active = True
-                     # Format Date
-                     msk_tz = timezone(timedelta(hours=3))
-                     date_str = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
-             
-             if is_active:
-                 # Get Tariff Name from DB (Last Paid Order)
-                 stmt_order = select(models.Order).options(selectinload(models.Order.tariff)).where(
-                    models.Order.user_id == user.id, 
-                    models.Order.status == models.OrderStatus.PAID
-                 ).order_by(models.Order.created_at.desc()).limit(1)
-                 result_order = await session.execute(stmt_order)
-                 last_order = result_order.scalar_one_or_none()
-                 tariff_name = last_order.tariff.name if last_order and last_order.tariff else "Unknown"
-                 
-                 # Prepare Message
-                 link = data.get('subscriptionUrl') or f"{config.remnawave_url}/sub/{user.remnawave_uuid}"
-                 
-                 msg = l10n.format_value("start-active-sub", {
-                     "tariff": escape(tariff_name),
-                     "date": date_str,
-                     "link": link
-                 })
-                 await message.answer(msg, parse_mode="HTML")
-                 
-        except Exception as e:
-            logger.debug("start_active_sub_info_failed", error=str(e))
+    except Exception as e:
+        logger.debug("start_active_subs_info_failed", error=str(e))
+
 
 @router.message(F.text == "🎁 Try for free")
 @router.message(F.text == "🎁 Попробовать бесплатно")
@@ -433,20 +505,8 @@ async def generate_profile_content(user_id, session, l10n):
         if limit_bytes > 0:
             percent = round((used_bytes / limit_bytes) * 100, 1)
             
-        # Traffic Bar (Green -> Yellow -> Orange -> Red)
-        bar_parts = []
-        for i in range(5):
-             low = i * 20
-             high = (i + 1) * 20
-             if percent >= high:
-                 bar_parts.append("🟥")
-             elif percent <= low:
-                 bar_parts.append("🟩")
-             elif (percent - low) < 10:
-                 bar_parts.append("🟨")
-             else:
-                 bar_parts.append("🟧")
-        bar_str = "".join(bar_parts)
+        bar_str = get_traffic_bar(percent)
+
             
         t_tariff = l10n.format_value("profile-tariff", {"name": tariff_name})
         t_traffic = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "percent": percent, "bar": bar_str})
@@ -510,19 +570,8 @@ async def generate_profile_content(user_id, session, l10n):
             if limit_bytes > 0:
                 percent = round((used_bytes / limit_bytes) * 100, 1)
                 
-            bar_parts = []
-            for i in range(5):
-                 low = i * 20
-                 high = (i + 1) * 20
-                 if percent >= high:
-                     bar_parts.append("🟥")
-                 elif percent <= low:
-                     bar_parts.append("🟩")
-                 elif (percent - low) < 10:
-                     bar_parts.append("🟨")
-                 else:
-                     bar_parts.append("🟧")
-            bar_str = "".join(bar_parts)
+            bar_str = get_traffic_bar(percent)
+
                 
             t_traffic = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "percent": percent, "bar": bar_str})
             
