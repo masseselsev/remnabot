@@ -23,7 +23,7 @@ profile-traffic = 📊 Трафик: { $used } / { $limit } GB ({ $percent }%) {
 profile-link = 🔗 Ссылка: { $link }
 
 profile-additional-accounts = 
-    🪿🚀🪿🚀🪿🚀🪿🚀🪿🚀🪿🚀🪿🚀
+    <b>────────────────────</b>
     📂 <b>Специальные аккаунты:</b>
 profile-account-item = 
     👤 <b>{ $username }</b>

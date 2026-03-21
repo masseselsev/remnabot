@@ -235,7 +235,7 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                     sub_lines.append("\n".join(item))
 
             if len(sub_lines) > 1:
-                full_text += "\n" + "\n\n🪿🚀🪿🚀🪿🚀🪿🚀🪿🚀🪿🚀🪿🚀\n".join(sub_lines)
+                full_text += "\n" + "\n\n────────────────────\n".join(sub_lines)
 
     except Exception as e:
         logger.debug("start_active_subs_info_failed", error=str(e))
@@ -572,7 +572,7 @@ async def generate_profile_content(user_id, session, l10n):
             
         if additional_items:
             additional_info = "\n\n" + l10n.format_value("profile-additional-accounts") + "\n"
-            additional_info += "\n🪿🚀🪿🚀🪿🚀🪿🚀🪿🚀🪿🚀🪿🚀\n".join(additional_items)
+            additional_info += "\n────────────────────\n".join(additional_items)
 
     text = (
         f"{l10n.format_value('profile-id', {'id': user.id})}\n"
