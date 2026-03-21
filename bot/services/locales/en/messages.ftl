@@ -1,12 +1,12 @@
 start-welcome = Welcome, { $name }!
+start-welcome = { $settings_msg }
 start-active-sub-title = ℹ️ <b>Active Subscriptions</b>:
 start-active-sub-item = 
     { $index }. 👤 <b>{ $username }</b>
     { $expiry }
     { $traffic }
     { $link }
-
-btn-trial = 🎁 Try for free
+    ──────────────────
 btn-shop = 🛒 Buy VPN
 btn-profile = 👤 Profile
 btn-devices = 📱 My Devices
@@ -153,7 +153,15 @@ admin-btn-tariffs = 📦 Plans
 admin-btn-trial = 🎁 Trial Settings
 admin-btn-cp = 💎 Custom Plans
 admin-btn-exit = ❌ Exit
+admin-btn-welcome = 📝 Welcome Message
 admin-exit-msg = 👋 You have exited the admin panel.
+
+admin-welcome-title = 📝 **Welcome Message Settings**
+    Select a language to edit:
+admin-welcome-ru = 🇷🇺 Russian
+admin-welcome-en = 🇺🇸 English
+admin-welcome-ask = Enter welcome text (HTML supported).\nUse `{"{"}$name{"}"}` for username.\nCurrent text:\n\n`{ $current }`
+admin-welcome-success = ✅ Message saved!
 
 # Trial Settings
 admin-trial-title = 🎁 **Trial Settings**

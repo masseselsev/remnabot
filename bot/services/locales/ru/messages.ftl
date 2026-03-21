@@ -1,11 +1,11 @@
+start-welcome = { $settings_msg }
 start-active-sub-title = ℹ️ <b>Активные подписки</b>:
 start-active-sub-item = 
     { $index }. 👤 <b>{ $username }</b>
     { $expiry }
     { $traffic }
     { $link }
-
-btn-trial = 🎁 Попробовать бесплатно
+    ──────────────────
 btn-shop = 🛒 Купить VPN
 btn-profile = 👤 Профиль
 btn-devices = 📱 Мои устройства
@@ -154,7 +154,15 @@ admin-btn-tariffs = 📦 Тарифы
 admin-btn-trial = 🎁 Настройки Триала
 admin-btn-cp = 💎 Спецтарифы
 admin-btn-exit = ❌ Выйти
+admin-btn-welcome = 📝 Настройка приветствия
 admin-exit-msg = 👋 Вы вышли из админ-панели.
+
+admin-welcome-title = 📝 **Настройка приветствия**
+    Выберите язык для редактирования:
+admin-welcome-ru = 🇷🇺 Русский
+admin-welcome-en = 🇺🇸 English
+admin-welcome-ask = Введите текст приветствия (поддерживается HTML).\nИспользуйте `{"{"}$name{"}"}` для имени пользователя.\nТекущий текст:\n\n`{ $current }`
+admin-welcome-success = ✅ Сообщение сохранено!
 
 # Trial Settings
 admin-trial-title = 🎁 **Настройки Триала**

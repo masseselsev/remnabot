@@ -47,6 +47,10 @@ class AdminStates(StatesGroup):
     t_traffic = State()
     t_squad = State()
     t_grant_id = State()
+    
+    # Welcome Message Settings
+    welcome_select_lang = State()
+    welcome_input_text = State()
 
 async def get_main_kb(l10n: FluentLocalization):
     return types.InlineKeyboardMarkup(inline_keyboard=[
@@ -54,6 +58,7 @@ async def get_main_kb(l10n: FluentLocalization):
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-trial"), callback_data="admin_trial")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-cp"), callback_data="admin_cp_list")],
         [types.InlineKeyboardButton(text="🔍 View User by TgID", callback_data="admin_search_user")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-welcome"), callback_data="admin_welcome_mgmt")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-exit"), callback_data="admin_exit")]
     ])
 
@@ -90,6 +95,46 @@ async def admin_exit(callback: types.CallbackQuery, state: FSMContext, l10n: Flu
 async def back_to_menu(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
     await state.clear()
     await callback.message.edit_text(l10n.format_value("admin-title"), reply_markup=await get_main_kb(l10n), parse_mode="Markdown")
+
+# --- Welcome Message Settings ---
+
+@router.callback_query(F.data == "admin_welcome_mgmt")
+async def admin_welcome_menu(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-welcome-ru"), callback_data="adm_w_edit_ru")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-welcome-en"), callback_data="adm_w_edit_en")],
+        [types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="admin_menu")]
+    ])
+    await callback.message.edit_text(l10n.format_value("admin-welcome-title"), reply_markup=kb, parse_mode="Markdown")
+
+@router.callback_query(F.data.startswith("adm_w_edit_"))
+async def admin_welcome_edit_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    lang = callback.data.split("_")[3] # ru or en
+    await state.update_data(edit_welcome_lang=lang)
+    
+    current_key = f"welcome_msg_{lang}"
+    current_val = await SettingsService.get_setting(current_key, f"Welcome, {"{"}$name{"}"}!") # Default if not set
+    
+    await state.set_state(AdminStates.welcome_input_text)
+    await callback.message.edit_text(
+        l10n.format_value("admin-welcome-ask", {"current": current_val}),
+        parse_mode="HTML",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="admin_welcome_mgmt")]])
+    )
+
+@router.message(AdminStates.welcome_input_text)
+async def admin_welcome_save(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+    data = await state.get_data()
+    lang = data.get("edit_welcome_lang")
+    if not lang: return
+    
+    new_text = message.text.strip()
+    await SettingsService.set_setting(f"welcome_msg_{lang}", new_text)
+    
+    await message.answer(l10n.format_value("admin-welcome-success"))
+    await state.clear()
+    # Go back to admin menu
+    await cmd_admin(message, state, l10n)
 
 # --- User Search ---
 

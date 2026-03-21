@@ -8,8 +8,14 @@ from bot.config import config
 from fluent.runtime import FluentLocalization
 from datetime import datetime, timezone, timedelta
 from dateutil import parser
+from aiogram.fsm.context import FSMContext
+from bot.services.users import UserService
+from bot.services.settings import SettingsService
+import structlog
 
 router = Router()
+
+logger = structlog.get_logger()
 
 async def check_existing_accounts(user_id: int):
     """
@@ -19,8 +25,8 @@ async def check_existing_accounts(user_id: int):
     manual_accounts_list: List of other accounts with matching telegramId
     """
     from bot.services.remnawave import api
-    import structlog
-    logger = structlog.get_logger()
+    # structlog import moved to global scope
+    # logger = structlog.get_logger() # Removed, using global logger
 
     try:
         # Attempt direct lookup by Telegram ID first (official spec endpoint)
@@ -78,23 +84,9 @@ async def check_existing_accounts(user_id: int):
         return None, []
 
 @router.message(CommandStart())
-async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
-    # Create or update user
-    stmt = select(models.User).where(models.User.id == message.from_user.id)
-    result = await session.execute(stmt)
-    user = result.scalar_one_or_none()
-
-    if not user:
-        user = models.User(
-            id=message.from_user.id,
-            username=message.from_user.username,
-            full_name=message.from_user.full_name,
-            language_code="ru" if message.from_user.language_code == "ru" else "en"
-        )
-        session.add(user)
-        # Flush to get ID if needed
-        await session.flush()
-
+async def cmd_start(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    user = await UserService.get_or_create_user(message.from_user.id, message.from_user.username)
+    
     # Account Discovery (Auto-Link)
     found_manual_acc = None
     if not user.remnawave_uuid:
@@ -106,17 +98,29 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
             
     await session.commit()
 
-    # Welcome message
-    text = l10n.format_value("start-welcome", {"name": message.from_user.first_name})
+    # Welcome message from settings
+    lang_code = l10n._locales[0] if hasattr(l10n, '_locales') else 'ru'
+    welcome_setting = await SettingsService.get_setting(f"welcome_msg_{lang_code}")
+    
+    if not welcome_setting:
+        fallback_msg = "Welcome, {$name}!" if lang_code == 'en' else "Добро пожаловать, {$name}!"
+        welcome_text = fallback_msg.replace("{$name}", message.from_user.first_name)
+    else:
+        welcome_text = welcome_setting.replace("{$name}", message.from_user.first_name)
     
     # Keyboard
+    btn_shop = l10n.format_value("btn-shop")
+    btn_profile = l10n.format_value("btn-profile")
+    btn_trial = l10n.format_value("btn-trial")
+    btn_support = l10n.format_value("btn-support")
+    
     kb = [
-        [types.KeyboardButton(text=l10n.format_value("btn-shop")), types.KeyboardButton(text=l10n.format_value("btn-profile"))],
-        [types.KeyboardButton(text=l10n.format_value("btn-trial")), types.KeyboardButton(text=l10n.format_value("btn-support"))]
+        [types.KeyboardButton(text=btn_shop), types.KeyboardButton(text=btn_profile)],
+        [types.KeyboardButton(text=btn_trial), types.KeyboardButton(text=btn_support)]
     ]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     
-    await message.answer(text, reply_markup=keyboard)
+    await message.answer(welcome_text, reply_markup=keyboard, parse_mode="HTML")
 
     # Manual Account Discovery Notification
     if found_manual_acc:
