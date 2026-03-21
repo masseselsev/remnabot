@@ -35,6 +35,9 @@ class AdminStates(StatesGroup):
     prov_desc = State()
     prov_confirm = State()
 
+    # User Search
+    search_user_id = State()
+
     # Standard Tariffs
     t_name = State()
     t_price_rub = State()
@@ -50,6 +53,7 @@ async def get_main_kb(l10n: FluentLocalization):
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-tariffs"), callback_data="admin_tariffs_list")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-trial"), callback_data="admin_trial")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-cp"), callback_data="admin_cp_list")],
+        [types.InlineKeyboardButton(text="🔍 View User by TgID", callback_data="admin_search_user")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-exit"), callback_data="admin_exit")]
     ])
 
@@ -86,6 +90,97 @@ async def admin_exit(callback: types.CallbackQuery, state: FSMContext, l10n: Flu
 async def back_to_menu(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
     await state.clear()
     await callback.message.edit_text(l10n.format_value("admin-title"), reply_markup=await get_main_kb(l10n), parse_mode="Markdown")
+
+# --- User Search ---
+
+@router.callback_query(F.data == "admin_search_user")
+async def admin_search_user_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    await state.set_state(AdminStates.search_user_id)
+    await callback.message.edit_text("Enter Telegram ID of the user to view:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="admin_menu")]]))
+
+@router.message(AdminStates.search_user_id)
+async def admin_search_user_process(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    try:
+        target_id = int(message.text.strip())
+    except ValueError:
+        await message.answer("Invalid Telegram ID. Please send a number.")
+        return
+        
+    await message.answer(f"Fetching data for {target_id}...")
+    
+    from bot.handlers.user import check_existing_accounts
+    from bot.services.remnawave import api
+    from dateutil import parser
+    from datetime import datetime, timezone, timedelta
+    
+    db_user = await session.get(models.User, target_id)
+    std_acc, manual_accs = await check_existing_accounts(target_id)
+    all_accs = []
+    if std_acc: all_accs.append(std_acc)
+    all_accs.extend(manual_accs)
+    
+    if not all_accs and not db_user:
+        await message.answer(f"User {target_id} not found in DB or Panel.")
+        await cmd_admin(message, state, l10n)
+        return
+        
+    text = f"👤 <b>User Info: {target_id}</b>\n"
+    if db_user:
+        text += f"Username: @{db_user.username or 'N/A'}\n"
+        text += f"DB Main UUID: <code>{db_user.remnawave_uuid or 'N/A'}</code>\n"
+    
+    text += "\n📦 <b>Accounts:</b>\n"
+    if not all_accs:
+        text += "No accounts found in panel.\n"
+        
+    msk_tz = timezone(timedelta(hours=3))
+    
+    for acc in all_accs:
+        uuid = acc.get('uuid')
+        uname = acc.get('username')
+        
+        limit_b = acc.get('trafficLimitBytes') or 0
+        used_b = acc.get('userTraffic', {}).get('usedTrafficBytes') or 0
+        limit_gb = limit_b / (1024**3) if limit_b else 0
+        used_gb = used_b / (1024**3)
+        
+        exp_at = acc.get('expireAt')
+        exp_str = "Unlimited"
+        if exp_at:
+            try:
+                dt = parser.isoparse(exp_at)
+                if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+                exp_str = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M")
+            except: pass
+            
+        text += f"\n🔹 <b>{uname}</b> (<code>{uuid[:8]}...</code>)\n"
+        text += f"   Traffic: {used_gb:.2f}GB / {limit_gb:.1f}GB\n"
+        text += f"   Expire: {exp_str}\n"
+        
+        try:
+            devices = await api.get_user_devices(uuid)
+        except:
+            devices = []
+            
+        if not devices:
+            text += "   Devices: 0\n"
+        else:
+            text += f"   Devices ({len(devices)}):\n"
+            for d in devices:
+                model = d.get('deviceModel', 'Unknown')
+                plat = d.get('platform', 'Unknown')
+                upd = d.get('updatedAt')
+                upd_str = "?"
+                if upd:
+                    try:
+                        udt = parser.isoparse(upd)
+                        if udt.tzinfo is None: udt = udt.replace(tzinfo=timezone.utc)
+                        upd_str = udt.astimezone(msk_tz).strftime("%d.%m %H:%M")
+                    except: pass
+                text += f"    - {model} ({plat}) [Act: {upd_str}]\n"
+
+    await message.answer(text, parse_mode="HTML")
+    await cmd_admin(message, state, l10n)
 
 # --- Trial Settings ---
 
