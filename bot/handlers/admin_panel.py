@@ -98,10 +98,29 @@ async def admin_search_user_start(callback: types.CallbackQuery, state: FSMConte
     await state.set_state(AdminStates.search_user_id)
     await callback.message.edit_text("Enter Telegram ID of the user to view:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="admin_menu")]]))
 
+@router.message(F.contact | F.forward_from)
+async def admin_intercept_contact_or_forward(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    if message.from_user.id not in config.admin_ids:
+        return
+        
+    target_id = None
+    if message.contact:
+        target_id = message.contact.user_id
+    elif message.forward_from:
+        target_id = message.forward_from.id
+        
+    if not target_id:
+        await message.answer("Cannot extract Telegram ID from this message.")
+        return
+        
+    await state.set_state(AdminStates.search_user_id)
+    await admin_search_user_process(message, state, session, l10n, override_id=target_id)
+
+
 @router.message(AdminStates.search_user_id)
-async def admin_search_user_process(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+async def admin_search_user_process(message: types.Message, state: FSMContext, session, l10n: FluentLocalization, override_id: int = None):
     try:
-        target_id = int(message.text.strip())
+        target_id = override_id if override_id is not None else int(message.text.strip())
     except ValueError:
         await message.answer("Invalid Telegram ID. Please send a number.")
         return
@@ -179,8 +198,146 @@ async def admin_search_user_process(message: types.Message, state: FSMContext, s
                     except: pass
                 text += f"    - {model} ({plat}) [Act: {upd_str}]\n"
 
-    await message.answer(text, parse_mode="HTML")
-    await cmd_admin(message, state, l10n)
+    kb_rows = []
+    for acc in all_accs:
+        uuid = acc.get('uuid')
+        uname = acc.get('username')
+        kb_rows.append([types.InlineKeyboardButton(text=f"📱 Devices: {uname}", callback_data=f"adm_dacc_{uuid}")])
+        
+    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_menu")])
+
+    await message.answer(text, parse_mode="HTML", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows))
+    # Do not call cmd_admin, we leave them here to click the device buttons if they want
+
+
+@router.callback_query(F.data.startswith("adm_dacc_"))
+async def admin_show_devices_list(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    target_uuid = callback.data.split("_", 2)[2]
+    await state.update_data(admin_manage_uuid=target_uuid)
+    
+    from bot.services.remnawave import api
+    from dateutil import parser
+    from datetime import datetime, timezone, timedelta
+    
+    try:
+        devices = await api.get_user_devices(target_uuid)
+    except Exception:
+        devices = []
+        
+    if not devices:
+        await callback.answer("No devices found for this account.", show_alert=True)
+        return
+        
+    kb_rows = []
+    msk_tz = timezone(timedelta(hours=3)) 
+    
+    for dev in devices:
+        model = dev.get('deviceModel', 'Unknown')
+        platform = dev.get('platform', 'Unknown')
+        hwid = dev.get('hwid')
+        updated_at = dev.get('updatedAt')
+        
+        time_str = "?"
+        if updated_at:
+             try:
+                 dt = parser.isoparse(updated_at)
+                 if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+                 time_str = dt.astimezone(msk_tz).strftime("%d.%m %H:%M")
+             except: pass
+        
+        btn_text = f"{model} ({platform}) {time_str}"
+        if len(btn_text) > 30: btn_text = btn_text[:29] + "…"
+        
+        # pass hwid up to 10 chars, fetch full later
+        cb_data = f"adm_ddev_{hwid[:10]}"
+        kb_rows.append([types.InlineKeyboardButton(text=btn_text, callback_data=cb_data)])
+        
+    # No convenient back button without re-generating profile, but this replaces the message inline or opens a new one
+    await callback.message.edit_text("Select a device to view or manage:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows))
+
+
+@router.callback_query(F.data.startswith("adm_ddev_"))
+async def admin_device_details(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    hwid_part = callback.data.split("_")[2]
+    data = await state.get_data()
+    target_uuid = data.get('admin_manage_uuid')
+    
+    if not target_uuid:
+        await callback.answer("Context lost. Search user again.", show_alert=True)
+        return
+        
+    from bot.services.remnawave import api
+    from dateutil import parser
+    from datetime import timezone, timedelta
+    
+    try:
+        devices = await api.get_user_devices(target_uuid)
+    except Exception:
+        devices = []
+        
+    target_dev = None
+    for d in devices:
+        if d.get('hwid', '').startswith(hwid_part):
+            target_dev = d
+            break
+            
+    if not target_dev:
+        await callback.answer("Device not found.", show_alert=True)
+        return
+        
+    # Store full hwid for deletion
+    await state.update_data(admin_manage_hwid=target_dev.get('hwid'))
+        
+    model = target_dev.get('deviceModel', 'Unknown')
+    platform = target_dev.get('platform', 'Unknown')
+    upd = target_dev.get('updatedAt')
+    ip = target_dev.get('lastIp', 'Unknown')
+    
+    upd_str = "Unknown"
+    if upd:
+        dt = parser.isoparse(upd)
+        if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+        upd_str = dt.astimezone(timezone(timedelta(hours=3))).strftime("%d.%m.%Y %H:%M:%S")
+
+    text = f"📱 <b>Device Info</b>\n" \
+           f"Model: {model}\n" \
+           f"Platform: {platform}\n" \
+           f"IP: {ip}\n" \
+           f"Last Active: {upd_str}"
+           
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="🗑 Delete Device", callback_data="adm_del_dev")],
+        [types.InlineKeyboardButton(text="🔙 Back", callback_data=f"adm_dacc_{target_uuid}")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data == "adm_del_dev")
+async def admin_delete_device(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    data = await state.get_data()
+    target_uuid = data.get('admin_manage_uuid')
+    target_hwid = data.get('admin_manage_hwid')
+    
+    if not target_uuid or not target_hwid:
+        await callback.answer("Context lost.", show_alert=True)
+        return
+        
+    from bot.services.remnawave import api
+    
+    try:
+        await api.delete_user_device(target_hwid, target_uuid)
+        await callback.answer("Device deleted successfully.", show_alert=True)
+        # Return to device list
+        await admin_show_devices_list(callback=types.CallbackQuery(
+            id=callback.id,
+            from_user=callback.from_user,
+            chat_instance=callback.chat_instance,
+            message=callback.message,
+            data=f"adm_dacc_{target_uuid}"
+        ), state=state, l10n=l10n)
+    except Exception as e:
+        await callback.answer(f"Failed to delete: {e}", show_alert=True)
 
 # --- Trial Settings ---
 
