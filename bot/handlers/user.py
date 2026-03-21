@@ -339,8 +339,8 @@ async def show_active_trial_info(messageable, data, uuid, l10n: FluentLocalizati
           
     await messageable.answer(
         f"{msg_active}\n\n"
-        f"📊 {msg_traffic}\n"
-        f"⏳ {msg_expires}\n\n"
+        f"{msg_traffic}\n"
+        f"{msg_expires}\n\n"
         f"{msg_link}\n{link}",
         disable_web_page_preview=True
     )
