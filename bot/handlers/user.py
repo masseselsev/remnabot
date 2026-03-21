@@ -175,8 +175,7 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
     btn_support = l10n.format_value("btn-support")
     
     kb = [
-        [types.KeyboardButton(text=btn_shop), types.KeyboardButton(text=btn_profile)],
-        [types.KeyboardButton(text=btn_trial), types.KeyboardButton(text=btn_support)]
+        [types.KeyboardButton(text=btn_profile), types.KeyboardButton(text=btn_trial), types.KeyboardButton(text=btn_support)]
     ]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     
@@ -520,6 +519,7 @@ async def process_profile(message: types.Message, session, l10n: FluentLocalizat
     if text:
         await message.answer(text, reply_markup=kb, parse_mode="HTML", disable_web_page_preview=True)
 
+
 @router.callback_query(F.data == "change_lang")
 async def show_language_selector(callback: types.CallbackQuery, l10n: FluentLocalization):
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
@@ -552,21 +552,17 @@ async def set_language(callback: types.CallbackQuery, session, l10n: FluentLocal
     
     if lang_code == "ru":
         text = "✅ Язык изменен на Русский.\nМеню обновлено."
-        btn_shop = "🛒 Купить VPN"
         btn_profile = "👤 Профиль"
         btn_trial = "🎁 3 дня бесплатно!"
         btn_support = "🆘 Поддержка"
     else:
         text = "✅ Language changed to English.\nMenu updated."
-        btn_shop = "🛒 Buy VPN"
         btn_profile = "👤 Profile"
         btn_trial = "🎁 3-day trial!"
         btn_support = "🆘 Support"
 
-    # Update Reply Keyboard
     kb = [
-        [types.KeyboardButton(text=btn_shop), types.KeyboardButton(text=btn_profile)],
-        [types.KeyboardButton(text=btn_trial), types.KeyboardButton(text=btn_support)]
+        [types.KeyboardButton(text=btn_profile), types.KeyboardButton(text=btn_trial), types.KeyboardButton(text=btn_support)]
     ]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     
