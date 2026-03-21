@@ -101,9 +101,7 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
         std_acc, man_acc_list = await check_existing_accounts(message.from_user.id)
         if std_acc:
             user.remnawave_uuid = std_acc['uuid']
-            # We don't need to notify "Linked", just proceed as normal
         elif man_acc_list:
-            # Pick the first one for notification
             found_manual_acc = man_acc_list[0]
             
     await session.commit()
@@ -120,9 +118,9 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
     
     await message.answer(text, reply_markup=keyboard)
 
-    # 1. Manual Account Discovery Notification
+    # Manual Account Discovery Notification
     if found_manual_acc:
-         # Calculate expiry for display
+         # ... existing found_manual_acc logic ...
          exp_date = "Unlimited"
          expire_at = found_manual_acc.get('expireAt')
          if expire_at:
@@ -145,57 +143,67 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
          ])
          await message.answer(msg_text, reply_markup=ikb, parse_mode="Markdown")
 
-    # Check for active subscription (notify newly granted users)
-    if user.remnawave_uuid:
-        try:
-             from bot.services.remnawave import api
-             from html import escape
-             from dateutil import parser
-             from datetime import datetime, timezone, timedelta
-             
-             # Get API User (already unwrapped by _request)
-             data = await api.get_user(user.remnawave_uuid)
-             
-             if not data or not isinstance(data, dict): return 
+    # Check for ALL active subscriptions
+    try:
+        from bot.services.remnawave import api
+        from html import escape
+        from dateutil import parser
+        from datetime import datetime, timezone, timedelta
+        
+        std_acc, manual_accs = await check_existing_accounts(user.id)
+        all_accs = []
+        if std_acc: all_accs.append(std_acc)
+        all_accs.extend(manual_accs)
+        
+        # Deduplicate by UUID
+        unique_accs = {a['uuid']: a for a in all_accs}.values()
+        
+        now_utc = datetime.now(timezone.utc)
+        msk_tz = timezone(timedelta(hours=3))
+        
+        for acc in unique_accs:
+            expire_at = acc.get('expireAt')
+            is_active = False
+            date_str = "Unlimited"
+            
+            if expire_at:
+                dt = parser.isoparse(expire_at)
+                if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+                if dt > now_utc:
+                    is_active = True
+                    date_str = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
+            else:
+                is_active = True # Unlimited
+                
+            if is_active:
+                # Try to resolve tariff name
+                tariff_name = "Unknown / Special"
+                if acc.get('uuid') == user.remnawave_uuid:
+                    stmt_order = select(models.Order).options(selectinload(models.Order.tariff)).where(
+                        models.Order.user_id == user.id, 
+                        models.Order.status == models.OrderStatus.PAID
+                    ).order_by(models.Order.created_at.desc()).limit(1)
+                    result_order = await session.execute(stmt_order)
+                    last_order = result_order.scalar_one_or_none()
+                    if last_order and last_order.tariff:
+                        tariff_name = last_order.tariff.name
 
-             # Check Expiry
-             expire_at = data.get('expireAt')
-             is_active = False
-             date_str = "Unlimited"
-             
-             if expire_at:
-                 dt = parser.isoparse(expire_at)
-                 if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
-                 now_utc = datetime.now(timezone.utc)
-                 
-                 if dt > now_utc:
-                     is_active = True
-                     # Format Date
-                     msk_tz = timezone(timedelta(hours=3))
-                     date_str = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
-             
-             if is_active:
-                 # Get Tariff Name from DB (Last Paid Order)
-                 stmt_order = select(models.Order).options(selectinload(models.Order.tariff)).where(
-                    models.Order.user_id == user.id, 
-                    models.Order.status == models.OrderStatus.PAID
-                 ).order_by(models.Order.created_at.desc()).limit(1)
-                 result_order = await session.execute(stmt_order)
-                 last_order = result_order.scalar_one_or_none()
-                 tariff_name = last_order.tariff.name if last_order and last_order.tariff else "Unknown"
-                 
-                 # Prepare Message
-                 link = data.get('subscriptionUrl') or f"{config.remnawave_url}/sub/{user.remnawave_uuid}"
-                 
-                 msg = l10n.format_value("start-active-sub", {
-                     "tariff": escape(tariff_name),
-                     "date": date_str,
-                     "link": link
-                 })
-                 await message.answer(msg, parse_mode="HTML")
-                 
-        except Exception as e:
-            logger.debug("start_active_sub_info_failed", error=str(e))
+                link = acc.get('subscriptionUrl') or f"{config.remnawave_url}/sub/{acc['uuid']}"
+                
+                msg = l10n.format_value("start-active-sub", {
+                    "tariff": escape(tariff_name),
+                    "date": date_str,
+                    "link": link
+                })
+                # Add username if it's not the standard "tg_..." one
+                uname = acc.get('username', '')
+                if uname and not uname.startswith(f"tg_{user.id}"):
+                    msg = f"👤 <b>{escape(uname)}</b>\n{msg}"
+                    
+                await message.answer(msg, parse_mode="HTML", disable_web_page_preview=True)
+
+    except Exception as e:
+        logger.debug("start_active_subs_info_failed", error=str(e))
 
 @router.message(F.text == "🎁 Try for free")
 @router.message(F.text == "🎁 Попробовать бесплатно")
