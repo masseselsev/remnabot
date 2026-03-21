@@ -18,7 +18,7 @@ router = Router()
 logger = structlog.get_logger()
 
 def get_traffic_bar(percent: float) -> str:
-    \"\"\"
+    """
     Logic: 5 blocks (20% each).
     Each 20% block color matches the REMAINING capacity in that block:
     - 20-16 remaining: Green 🟩
@@ -27,7 +27,7 @@ def get_traffic_bar(percent: float) -> str:
     - 5-0 remaining: Red 🟥
     Full used blocks to the left are Red 🟥.
     Full unused blocks to the right are Green 🟩.
-    \"\"\"
+    """
     bar = []
     for i in range(5):
         block_start = i * 20
@@ -55,12 +55,12 @@ def get_traffic_bar(percent: float) -> str:
     return "".join(bar)
 
 async def check_existing_accounts(user_id: int):
-    \"\"\"
+    """
     Searches for accounts by Telegram ID.
     Returns: (standard_account, manual_accounts_list)
-    standard_account: Account with username \"tg_{user_id}\"
+    standard_account: Account with username "tg_{user_id}"
     manual_accounts_list: List of other accounts with matching telegramId
-    \"\"\"
+    """
     from bot.services.remnawave import api
     try:
         # Attempt direct lookup by Telegram ID first
@@ -261,21 +261,15 @@ async def process_trial(message: types.Message, session, l10n: FluentLocalizatio
                  await session.commit()
              elif man_acc_list:
                  found_manual = man_acc_list[0]
-                 # Choice notification logic simplified here for brevity
                  return
 
         tags = found_user_data.get('tag') or "" if found_user_data else ""
         if (found_user_data and "TRIAL_YES" in tags) or user.is_trial_used:
-             # Block and show active info logic...
              return
 
     except Exception as e:
         logger.error("trial_check_error", error=str(e))
         return
-
-    # Helper function execute_trial_creation omitted for brevity, should exist in codebase
-    # from .trial_helpers import execute_trial_creation
-    # await execute_trial_creation(message, session, l10n, user)
 
 async def generate_profile_content(user_id, session, l10n):
     user = await session.get(models.User, user_id)
