@@ -59,49 +59,51 @@ async def check_existing_accounts(user_id: int):
     """
     Searches for accounts by Telegram ID.
     Returns: (standard_account, manual_accounts_list)
-    standard_account: Account with username "tg_{user_id}"
-    manual_accounts_list: List of other accounts with matching telegramId
     """
     from bot.services.remnawave import api
     import structlog
     logger = structlog.get_logger()
 
     try:
-        # Attempt direct lookup by Telegram ID first (official spec endpoint)
         candidates = []
+        
+        # 1. Try get_user_by_telegram_id (sometimes returns list, sometimes dict)
         try:
-            direct_user = await api.get_user_by_telegram_id(user_id)
-            if direct_user and isinstance(direct_user, dict) and (direct_user.get('uuid') or direct_user.get('username')):
-                candidates = [direct_user]
+            direct = await api.get_user_by_telegram_id(user_id)
+            if isinstance(direct, dict) and direct.get('uuid'):
+                candidates.append(direct)
+            elif isinstance(direct, list):
+                candidates.extend(direct)
         except Exception:
-            # Fallback to search if direct lookup fails
+            pass
+            
+        # 2. Add users from search to ensure we catch manual accounts that might be missed by direct ID lookup
+        try:
             resp = await api.get_users(search=str(user_id))
             if isinstance(resp, list):
-                candidates = resp
+                candidates.extend(resp)
             elif isinstance(resp, dict):
-                # Try to find the list of users in various possible fields
-                candidates = resp.get('users') or resp.get('data') or resp.get('items') or []
-                if not isinstance(candidates, list):
-                    # If we got a dict that IS the user (unlikely for search but possible)
-                    if resp.get('uuid') or resp.get('username'):
-                        candidates = [resp]
-                    else:
-                        candidates = []
-        
+                cands = resp.get('users') or resp.get('data') or resp.get('items') or []
+                if isinstance(cands, list):
+                    candidates.extend(cands)
+                elif isinstance(resp, dict) and resp.get('uuid'):
+                    candidates.append(resp)
+        except Exception:
+            pass
+
         standard = None
         manual = []
-        
         target_username = f"tg_{user_id}"
         
-
+        # Deduplicate candidates by uuid
+        unique_candidates = {c['uuid']: c for c in candidates if isinstance(c, dict) and 'uuid' in c}.values()
         
-        for u in candidates:
-            # Check explicit telegramId match (robust) or username match
+        for u in unique_candidates:
             tid = u.get('telegramId')
             uname = u.get('username')
             
-            # API search is fuzzy, so verify ID or exact username
             is_match = False
+            # API search is fuzzy, so verify ID or exact username
             if str(tid) == str(user_id): is_match = True
             if uname == target_username: is_match = True
             
