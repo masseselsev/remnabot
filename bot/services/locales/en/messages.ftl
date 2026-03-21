@@ -1,11 +1,9 @@
 start-welcome = Welcome, { $name }!
-start-active-sub = 
-    ℹ️ <b>Active Subscription</b>
-    
-    📦 Plan: <b>{ $tariff }</b>
-    📅 Expires: { $date }
-    
-    🔗 <b>Link:</b>
+start-active-sub-title = ℹ️ <b>Active Subscriptions</b>:
+start-active-sub-item = 
+    { $index }. 👤 <b>{ $username }</b>
+    { $expiry }
+    { $traffic }
     { $link }
 
 btn-trial = 🎁 Try for free
@@ -202,11 +200,11 @@ admin-t-list-btn = List
 admin-t-view-title = 📦 **{ $name }**
 admin-t-view-prices = Prices: { $rub }₽ / { $stars }⭐️ / { $usd }$
 admin-t-view-duration = 📅 Duration: { $days } days
-admin-t-view-squad = 🛡 Squad: { $squad }
-admin-t-view-traffic = 📊 Traffic Limit: { $traffic } GB
-admin-t-btn-grant = 🎁 Give to User
-admin-t-grant-ask = Enter user's Telegram ID (numeric):
-admin-t-grant-success-full = 
+205: admin-t-view-squad = 🛡 Squad: { $squad }
+206: admin-t-view-traffic = 📊 Traffic Limit: { $traffic } GB
+207: admin-t-btn-grant = 🎁 Give to User
+208: admin-t-grant-ask = Enter user's Telegram ID (numeric):
+209: admin-t-grant-success-full = 
     ✅ Plan <b>{ $tariff }</b> granted!
     
     👤 User: { $user_id } { $username }
@@ -239,4 +237,3 @@ shop-pay-stars-hint = ☝️ Tap the button above to pay with Stars.
 shop-success = ✅ Payment successful! Order #{ $id } completed.
 shop-error-fulfillment = ⚠️ Payment successful, but delivery failed. Contact support.
 shop-error-not-found = ⚠️ Payment successful, but order not found. Contact support.
-

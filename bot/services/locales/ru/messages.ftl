@@ -1,11 +1,8 @@
-start-welcome = Добро пожаловать, { $name }!
-start-active-sub = 
-    ℹ️ <b>Активная подписка</b>
-    
-    📦 Тариф: <b>{ $tariff }</b>
-    📅 Истекает: { $date }
-    
-    🔗 <b>Ссылка:</b>
+start-active-sub-title = ℹ️ <b>Активные подписки</b>:
+start-active-sub-item = 
+    { $index }. 👤 <b>{ $username }</b>
+    { $expiry }
+    { $traffic }
     { $link }
 
 btn-trial = 🎁 Попробовать бесплатно

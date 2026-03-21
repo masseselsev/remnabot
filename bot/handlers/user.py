@@ -155,52 +155,75 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
         if std_acc: all_accs.append(std_acc)
         all_accs.extend(manual_accs)
         
-        # Deduplicate by UUID
-        unique_accs = {a['uuid']: a for a in all_accs}.values()
+        # Deduplicate
+        unique_accs = list({a['uuid']: a for a in all_accs}.values())
         
-        now_utc = datetime.now(timezone.utc)
-        msk_tz = timezone(timedelta(hours=3))
-        
-        for acc in unique_accs:
-            expire_at = acc.get('expireAt')
-            is_active = False
-            date_str = "Unlimited"
+        if unique_accs:
+            now_utc = datetime.now(timezone.utc)
+            msk_tz = timezone(timedelta(hours=3))
             
-            if expire_at:
-                dt = parser.isoparse(expire_at)
-                if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
-                if dt > now_utc:
-                    is_active = True
-                    date_str = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
-            else:
-                is_active = True # Unlimited
+            # Filter only active ones
+            active_list = []
+            for acc in unique_accs:
+                expire_at = acc.get('expireAt')
+                if not expire_at:
+                    active_list.append(acc)
+                else:
+                    dt = parser.isoparse(expire_at)
+                    if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+                    if dt > now_utc:
+                        active_list.append(acc)
+            
+            if active_list:
+                msg_lines = [l10n.format_value("start-active-sub-title")]
                 
-            if is_active:
-                # Try to resolve tariff name
-                tariff_name = "Unknown / Special"
-                if acc.get('uuid') == user.remnawave_uuid:
-                    stmt_order = select(models.Order).options(selectinload(models.Order.tariff)).where(
-                        models.Order.user_id == user.id, 
-                        models.Order.status == models.OrderStatus.PAID
-                    ).order_by(models.Order.created_at.desc()).limit(1)
-                    result_order = await session.execute(stmt_order)
-                    last_order = result_order.scalar_one_or_none()
-                    if last_order and last_order.tariff:
-                        tariff_name = last_order.tariff.name
-
-                link = acc.get('subscriptionUrl') or f"{config.remnawave_url}/sub/{acc['uuid']}"
-                
-                msg = l10n.format_value("start-active-sub", {
-                    "tariff": escape(tariff_name),
-                    "date": date_str,
-                    "link": link
-                })
-                # Add username if it's not the standard "tg_..." one
-                uname = acc.get('username', '')
-                if uname and not uname.startswith(f"tg_{user.id}"):
-                    msg = f"👤 <b>{escape(uname)}</b>\n{msg}"
+                for idx, acc in enumerate(active_list, 1):
+                    # Formatting logic similar to profile
+                    exp_at = acc.get('expireAt')
+                    exp_str = l10n.format_value("subscription-none")
+                    if exp_at:
+                        try:
+                            edt = parser.isoparse(exp_at)
+                            if edt.tzinfo is None: edt = edt.replace(tzinfo=timezone.utc)
+                            date_str = edt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
+                            exp_str = l10n.format_value("profile-expiry", {"date": date_str})
+                        except: pass
+                    else:
+                        exp_str = l10n.format_value("profile-expiry", {"date": "Unlimited"})
+                        
+                    # Traffic
+                    limit_bytes = acc.get('trafficLimitBytes') or 0
+                    used_bytes = acc.get('userTraffic', {}).get('usedTrafficBytes') or 0
+                    limit_gb = round(int(limit_bytes) / (1024**3), 1)
+                    used_gb = round(int(used_bytes) / (1024**3), 2)
+                    percent = round((used_bytes / limit_bytes) * 100, 1) if limit_bytes > 0 else 0
                     
-                await message.answer(msg, parse_mode="HTML", disable_web_page_preview=True)
+                    bar_parts = []
+                    for i in range(5):
+                         low = i * 20
+                         high = (i + 1) * 20
+                         if percent >= high: bar_parts.append("🟥")
+                         elif percent <= low: bar_parts.append("🟩")
+                         elif (percent - low) < 10: bar_parts.append("🟨")
+                         else: bar_parts.append("🟧")
+                    bar_str = "".join(bar_parts)
+                    
+                    traffic_str = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "percent": percent, "bar": bar_str})
+                    link = acc.get('subscriptionUrl') or f"{config.remnawave_url}/sub/{acc['uuid']}"
+                    link_str = l10n.format_value("profile-link", {"link": link})
+                    
+                    uname = acc.get('username', 'Unknown')
+                    
+                    item = l10n.format_value("start-active-sub-item", {
+                        "index": idx,
+                        "username": escape(uname),
+                        "expiry": exp_str,
+                        "traffic": traffic_str,
+                        "link": link_str
+                    })
+                    msg_lines.append(item)
+
+                await message.answer("\n".join(msg_lines), parse_mode="HTML", disable_web_page_preview=True)
 
     except Exception as e:
         logger.debug("start_active_subs_info_failed", error=str(e))
