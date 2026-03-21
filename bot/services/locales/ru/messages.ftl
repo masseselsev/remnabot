@@ -12,7 +12,7 @@ btn-devices = 📱 Мои устройства
 btn-yes = ✅ Да
 btn-no = ❌ Нет
 btn-support = 🆘 Поддержка
-btn-trial = 🎁 Trial-подписка
+btn-trial = 🎁 3 дня бесплатно!
 
 profile-title = 👤 Ваш профиль
 profile-id = 👤 Tg ID: { $id }

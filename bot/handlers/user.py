@@ -630,13 +630,13 @@ async def set_language(callback: types.CallbackQuery, session, l10n: FluentLocal
         text = "✅ Язык изменен на Русский.\nМеню обновлено."
         btn_shop = "🛒 Купить VPN"
         btn_profile = "👤 Профиль"
-        btn_trial = "🎁 Trial-подписка"
+        btn_trial = "🎁 3 дня бесплатно!"
         btn_support = "🆘 Поддержка"
     else:
         text = "✅ Language changed to English.\nMenu updated."
         btn_shop = "🛒 Buy VPN"
         btn_profile = "👤 Profile"
-        btn_trial = "🎁 Free Trial"
+        btn_trial = "🎁 3-day trial!"
         btn_support = "🆘 Support"
 
     # Update Reply Keyboard
