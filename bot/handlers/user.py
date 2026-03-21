@@ -518,7 +518,7 @@ async def generate_profile_content(user_id, session, l10n):
         
     additional_info = ""
     if additional_accs:
-        additional_info = "\n\n" + l10n.format_value("profile-additional-accounts") + "\n"
+        additional_items = []
         for acc in additional_accs:
             u_name = acc.get('username', 'Unknown')
             
@@ -562,12 +562,17 @@ async def generate_profile_content(user_id, session, l10n):
             
             t_link = l10n.format_value("profile-link", {"link": link})
             
-            additional_info += l10n.format_value("profile-account-item", {
+            item_text = l10n.format_value("profile-account-item", {
                 "username": u_name, 
                 "expiry": exp_str,
                 "traffic": t_traffic,
                 "link": t_link
-            }) + "\n"
+            })
+            additional_items.append(item_text)
+            
+        if additional_items:
+            additional_info = "\n\n" + l10n.format_value("profile-additional-accounts") + "\n"
+            additional_info += "\n──────────────\n".join(additional_items)
 
     text = (
         f"{l10n.format_value('profile-id', {'id': user.id})}\n"
