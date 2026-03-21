@@ -158,6 +158,9 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
     else:
         welcome_text = welcome_setting.replace("{$name}", message.from_user.first_name)
     
+    # Combined Message construction
+    full_text = welcome_text
+    
     # Keyboard
     btn_shop = l10n.format_value("btn-shop")
     btn_profile = l10n.format_value("btn-profile")
@@ -170,35 +173,7 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
     ]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     
-    await message.answer(welcome_text, reply_markup=keyboard)
-
-
-    # 1. Manual Account Discovery Notification
-    if found_manual_acc:
-         # Calculate expiry for display
-         exp_date = "Unlimited"
-         expire_at = found_manual_acc.get('expireAt')
-         if expire_at:
-             try:
-                 dt = parser.isoparse(expire_at)
-                 if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
-                 msk_tz = timezone(timedelta(hours=3))
-                 exp_date = dt.astimezone(msk_tz).strftime("%Y-%m-%d")
-             except: pass
-             
-         msg_text = l10n.format_value("account-found-manual", {
-             "username": found_manual.get('username', 'Unknown'),
-             "tariff": "Manual/Imported", 
-             "expire": exp_date
-         })
-         
-         ikb = types.InlineKeyboardMarkup(inline_keyboard=[
-             [types.InlineKeyboardButton(text=l10n.format_value("btn-create-new"), callback_data="req_trial_new")],
-             [types.InlineKeyboardButton(text=l10n.format_value("btn-use-existing"), callback_data=f"link_acc_{found_manual['uuid']}")]
-         ])
-         await message.answer(msg_text, reply_markup=ikb, parse_mode="Markdown")
-
-    # Check for ALL active subscriptions
+    # Now append subscriptions to full_text if they exist
     try:
         from bot.services.remnawave import api
         from html import escape
@@ -214,9 +189,9 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
         now_utc = datetime.now(timezone.utc)
         msk_tz = timezone(timedelta(hours=3))
         
-        msg_lines = []
         if unique_accs:
-            msg_lines.append(f"<b>{l10n.format_value('start-active-subs-title') or 'ℹ️ Active Subscriptions:'}</b>")
+            sub_title = l10n.format_value('start-active-sub-title') or 'ℹ️ <b>Активные подписки:</b>'
+            sub_lines = [f"\n{sub_title}"]
             
             for idx, acc in enumerate(unique_accs, 1):
                 expire_at = acc.get('expireAt')
@@ -251,25 +226,19 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                     
                     item = [
                         f"{idx}. 👤 <b>{escape(uname)}</b>",
-                        f"📅 {l10n.format_value('profile-expiry-caption') or 'Active until'} {exp_date}",
+                        f"📅 {l10n.format_value('profile-expiry-caption') or 'До:'} {exp_date}",
                         f"📊 {traffic_str}",
-                        f"🔗 {l10n.format_value('profile-link-caption') or 'Link'}: {link}"
+                        f"🔗 {link}"
                     ]
-                    msg_lines.append("\n".join(item))
+                    sub_lines.append("\n".join(item))
 
-            if msg_lines:
-                # The first element is the title, the rest are items.
-                title = msg_lines[0]
-                items = msg_lines[1:]
-                
-                final_text = title
-                if items:
-                    final_text += "\n\n" + "\n\n──────────────\n".join(items)
-                
-                await message.answer(final_text, parse_mode="HTML", disable_web_page_preview=True)
-                 
+            if len(sub_lines) > 1:
+                full_text += "\n" + "\n\n──────────────\n".join(sub_lines)
+
     except Exception as e:
         logger.debug("start_active_subs_info_failed", error=str(e))
+        
+    await message.answer(full_text, reply_markup=keyboard, parse_mode="HTML", disable_web_page_preview=True)
 
 
 @router.message(F.text == "🎁 Try for free")
@@ -642,15 +611,12 @@ async def set_language(callback: types.CallbackQuery, session):
     
     if lang_code == "ru":
         text = "✅ Язык изменен на Русский.\nМеню обновлено."
-        btn_shop = "🛒 Купить VPN"
-        btn_profile = "👤 Профиль"
-        btn_trial = "🎁 Попробовать бесплатно"
-        btn_support = "🆘 Поддержка"
+        btn_shop = l10n.format_value("btn-shop")
+        btn_profile = l10n.format_value("btn-profile")
+        btn_trial = l10n.format_value("btn-trial")
+        btn_support = l10n.format_value("btn-support")
     else:
         text = "✅ Language changed to English.\nMenu updated."
-        btn_shop = "🛒 Buy VPN"
-        btn_profile = "👤 Profile"
-        btn_trial = "🎁 Try for free"
         btn_support = "🆘 Support"
 
     # Update Reply Keyboard
