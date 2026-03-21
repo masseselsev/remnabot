@@ -12,6 +12,7 @@ btn-profile = 👤 Profile
 btn-devices = 📱 My Devices
 btn-yes = ✅ Yes
 btn-no = ❌ No
+btn-trial = 🎁 Free Trial
 btn-support = 🆘 Support
 
 profile-title = 👤 Your Profile

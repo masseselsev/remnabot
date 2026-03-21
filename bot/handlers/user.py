@@ -610,21 +610,33 @@ async def delete_msg(callback: types.CallbackQuery):
     await callback.message.delete()
 
 @router.callback_query(F.data.startswith("set_lang_"))
-async def set_language(callback: types.CallbackQuery, session):
+async def set_language(callback: types.CallbackQuery, session, l10n: FluentLocalization):
     lang_code = callback.data.split("_")[2]
     user = await session.get(models.User, callback.from_user.id)
     if user:
         user.language_code = lang_code
         await session.commit()
     
+    # We must use the l10n object that matches the new language
+    # or rely on the middleware to provide it if we answered later.
+    # But since we need it NOW to build the keyboard, we should ideally
+    # get a localized version. 
+    # For now, let's just use the provided l10n if it's already switched, 
+    # or simpler: hardcode or re-fetch.
+    # Actually, the middleware usually provides l10n based on DB. 
+    # Since we just committed, if we re-fetch 'l10n' or just use the keys:
+    
     if lang_code == "ru":
         text = "✅ Язык изменен на Русский.\nМеню обновлено."
-        btn_shop = l10n.format_value("btn-shop")
-        btn_profile = l10n.format_value("btn-profile")
-        btn_trial = l10n.format_value("btn-trial")
-        btn_support = l10n.format_value("btn-support")
+        btn_shop = "🛒 Купить VPN"
+        btn_profile = "👤 Профиль"
+        btn_trial = "🎁 Trial-подписка"
+        btn_support = "🆘 Поддержка"
     else:
         text = "✅ Language changed to English.\nMenu updated."
+        btn_shop = "🛒 Buy VPN"
+        btn_profile = "👤 Profile"
+        btn_trial = "🎁 Free Trial"
         btn_support = "🆘 Support"
 
     # Update Reply Keyboard
