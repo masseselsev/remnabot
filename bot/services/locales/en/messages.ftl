@@ -21,6 +21,7 @@ profile-status = Status: { $status }
 
 # Shared components
 profile-expiry = 📅 Active until { $date }
+profile-expiry-caption = Active until
 profile-traffic = 📊 Traffic: { $used } / { $limit } GB ({ $percent }%) { $bar }
 profile-link = 🔗 Link: { $link }
 
@@ -44,7 +45,7 @@ btn-topup = 💳 Top up Balance
 btn-back = 🔙 Back
 shop-select-tariff = 📦 Select a plan:
 profile-tariff = 📦 Plan: { $name }
-profile-traffic = 📊 Traffic: { $used } / { $limit } GB ({ $percent }%)
+profile-tariff = 📦 Plan: { $name }
 trial-activated = ✅ Trial activated!
 trial-active = ✅ Your trial is active!
 trial-traffic = 📊 Traffic: { $gb } GB

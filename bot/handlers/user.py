@@ -234,7 +234,7 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                     item = [
                         f"{idx}. 👤 <b>{escape(uname)}</b>",
                         f"📅 {l10n.format_value('profile-expiry-caption') or 'До:'} {exp_date}",
-                        f"📊 {traffic_str}",
+                        f"{traffic_str}",
                         f"🔗 {link}"
                     ]
                     sub_lines.append("\n".join(item))

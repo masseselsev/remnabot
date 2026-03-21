@@ -20,6 +20,7 @@ profile-status = Статус: { $status }
 
 # Shared components
 profile-expiry = 📅 Активна до { $date }
+profile-expiry-caption = Активна до
 profile-traffic = 📊 Трафик: { $used } / { $limit } GB ({ $percent }%) { $bar }
 profile-link = 🔗 Ссылка: { $link }
 
@@ -43,7 +44,6 @@ btn-topup = 💳 Пополнить баланс
 btn-back = 🔙 Назад
 shop-select-tariff = 📦 Выберите тариф:
 profile-tariff = 📦 Тариф: { $name }
-profile-traffic = 📊 Трафик: { $used } / { $limit } ГБ ({ $percent }%)
 trial-activated = ✅ Пробный период активирован!
 trial-active = ✅ Ваш пробный период активен!
 trial-traffic = 📊 Трафик: { $gb } ГБ
