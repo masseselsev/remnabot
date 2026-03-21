@@ -129,14 +129,14 @@ async def cmd_start(message: types.Message, l10n: FluentLocalization, session):
              except: pass
              
          msg_text = l10n.format_value("account-found-manual", {
-             "username": found_manual.get('username', 'Unknown'),
+             "username": found_manual_acc.get('username', 'Unknown'),
              "tariff": "Manual/Imported", 
              "expire": exp_date
          })
          
          ikb = types.InlineKeyboardMarkup(inline_keyboard=[
              [types.InlineKeyboardButton(text=l10n.format_value("btn-create-new"), callback_data="req_trial_new")],
-             [types.InlineKeyboardButton(text=l10n.format_value("btn-use-existing"), callback_data=f"link_acc_{found_manual['uuid']}")]
+             [types.InlineKeyboardButton(text=l10n.format_value("btn-use-existing"), callback_data=f"link_acc_{found_manual_acc['uuid']}")]
          ])
          await message.answer(msg_text, reply_markup=ikb, parse_mode="Markdown")
 
