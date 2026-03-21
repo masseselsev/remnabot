@@ -98,7 +98,7 @@ async def admin_search_user_start(callback: types.CallbackQuery, state: FSMConte
     await state.set_state(AdminStates.search_user_id)
     await callback.message.edit_text("Enter Telegram ID of the user to view:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="admin_menu")]]))
 
-@router.message(F.contact | F.forward_from)
+@router.message(F.contact | F.forward_origin)
 async def admin_intercept_contact_or_forward(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
     if message.from_user.id not in config.admin_ids:
         return
@@ -106,8 +106,12 @@ async def admin_intercept_contact_or_forward(message: types.Message, state: FSMC
     target_id = None
     if message.contact:
         target_id = message.contact.user_id
-    elif message.forward_from:
-        target_id = message.forward_from.id
+    elif message.forward_origin:
+        if message.forward_origin.type == 'user':
+            target_id = message.forward_origin.sender_user.id
+        else:
+            await message.answer("Невозможно получить ID пользователя из этого сообщения (возможно профиль скрыт настройками приватности или это канал).")
+            return
         
     if not target_id:
         await message.answer("Cannot extract Telegram ID from this message.")
