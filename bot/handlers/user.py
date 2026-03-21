@@ -10,10 +10,14 @@ from datetime import datetime, timezone, timedelta
 from dateutil import parser
 
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from bot.services.settings import SettingsService
 import structlog
 
 router = Router()
+
+class UserStates(StatesGroup):
+    trial_promo = State()
 
 logger = structlog.get_logger()
 
@@ -1000,13 +1004,55 @@ async def link_manual_account(callback: types.CallbackQuery, session, l10n: Flue
     await process_profile(wrapper, session, l10n)
 
 @router.callback_query(F.data == "req_trial_new")
-async def request_new_trial_explicit(callback: types.CallbackQuery, session, l10n: FluentLocalization):
-    user = await session.get(models.User, callback.from_user.id)
-    # We call the helper. 
-    # Note: execute_trial_creation expects a messageable object that has .answer()
-    # callback.message is such object.
-    await execute_trial_creation(callback.message, session, l10n, user)
+async def request_new_trial_explicit(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
+    user_id = callback.from_user.id
+    user = await session.get(models.User, user_id)
+    if user and user.is_trial_used:
+         await callback.answer(l10n.format_value("trial-already-used"), show_alert=True)
+         return
+
+    await callback.message.answer(l10n.format_value("trial-promo-request"))
+    await state.set_state(UserStates.trial_promo)
     await callback.answer()
+
+@router.message(UserStates.trial_promo)
+async def process_trial_promo(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    promo_code = message.text.strip()
+    user = await session.get(models.User, message.from_user.id)
+    
+    if user.is_trial_used:
+        await message.answer(l10n.format_value("trial-already-used"))
+        await state.clear()
+        return
+
+    is_valid = False
+    
+    # Built-in: Current date (GMT+3)
+    now_gmt3 = datetime.now(timezone.utc) + timedelta(hours=3)
+    today_code = now_gmt3.strftime("%d.%m.%Y")
+    
+    if promo_code == today_code:
+        is_valid = True
+    else:
+        # Check DB
+        stmt = select(models.Promocode).where(models.Promocode.code == promo_code, models.Promocode.is_trial_only == True)
+        result = await session.execute(stmt)
+        promo = result.scalar_one_or_none()
+        
+        if promo:
+            if promo.max_uses == 0 or promo.used_count < promo.max_uses:
+                # Check expiry if exists
+                if promo.active_until and promo.active_until < datetime.utcnow():
+                    is_valid = False
+                else:
+                    is_valid = True
+                    promo.used_count += 1
+            
+    if is_valid:
+        await state.clear()
+        await execute_trial_creation(message, session, l10n, user)
+    else:
+        await message.answer(l10n.format_value("trial-promo-invalid"))
 
 async def execute_trial_creation(messageable, session, l10n: FluentLocalization, user: models.User):
     import structlog

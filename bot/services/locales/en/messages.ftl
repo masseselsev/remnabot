@@ -55,6 +55,8 @@ trial-failed = ❌ Failed to activate trial. Please contact support.
 trial-days = { $count } Days
 trial-hours = { $count } Hours
 trial-less-day = Less than 1 Day
+trial-promo-request = 🎟 Please enter a promo code to activate your 3-day free trial:
+trial-promo-invalid = ❌ Invalid or used promo code.
 
 account-found-manual = 
     🔍 **Found existing account:**

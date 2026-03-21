@@ -65,6 +65,7 @@ class Promocode(Base):
     used_count: Mapped[int] = mapped_column(Integer, default=0)
     
     active_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    is_trial_only: Mapped[bool] = mapped_column(Boolean, default=False)
 
 class Order(Base):
     __tablename__ = "orders"

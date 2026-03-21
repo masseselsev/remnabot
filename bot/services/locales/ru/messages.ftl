@@ -54,6 +54,8 @@ trial-failed = ❌ Не удалось активировать пробный �
 trial-days = { $count } Дней
 trial-hours = { $count } Часов
 trial-less-day = Менее 1 дня
+trial-promo-request = 🎟 Пожалуйста, введите промокод для активации пробного периода (3 дня):
+trial-promo-invalid = ❌ Неверный или использованный промокод.
 
 account-found-manual = 
     🔍 **Найден существующий аккаунт:**

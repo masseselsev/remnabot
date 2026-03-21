@@ -52,12 +52,17 @@ class AdminStates(StatesGroup):
     welcome_select_lang = State()
     welcome_input_text = State()
 
+    # Promo Codes
+    promo_code = State()
+    promo_uses = State()
+
 async def get_main_kb(l10n: FluentLocalization):
     return types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-tariffs"), callback_data="admin_tariffs_list")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-trial"), callback_data="admin_trial")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-cp"), callback_data="admin_cp_list")],
         [types.InlineKeyboardButton(text="🔍 View User by TgID", callback_data="admin_search_user")],
+        [types.InlineKeyboardButton(text="🎟 Promo Codes", callback_data="admin_promos_list")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-welcome"), callback_data="admin_welcome_mgmt")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-exit"), callback_data="admin_exit")]
     ])
@@ -1049,3 +1054,77 @@ async def t_delete(callback: types.CallbackQuery, session, l10n: FluentLocalizat
     except Exception as e:
         await session.rollback()
         await callback.answer(f"Error: {e}", show_alert=True)
+
+# --- Promo Codes Management ---
+
+@router.callback_query(F.data == "admin_promos_list")
+async def admin_promos_list(callback: types.CallbackQuery, session, l10n: FluentLocalization):
+    stmt = select(models.Promocode).where(models.Promocode.is_trial_only == True)
+    result = await session.execute(stmt)
+    promos = result.scalars().all()
+    
+    text = "🎟 **Trial Promo Codes**\n\n"
+    if not promos:
+        text += "No promo codes found."
+    else:
+        for p in promos:
+            text += f"• <code>{p.code}</code> - {p.used_count}/{p.max_uses or '∞'} uses\n"
+            text += f"  [Delete: /del_promo_{p.code}]\n\n"
+    
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="➕ Add Promo", callback_data="admin_promo_add")],
+        [types.InlineKeyboardButton(text="🔙 Back", callback_data="admin_panel")]
+    ])
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data == "admin_promo_add")
+async def admin_promo_add_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    await callback.message.edit_text("Enter the promo code string (e.g. TRIAL2026):")
+    await state.set_state(AdminStates.promo_code)
+
+@router.message(AdminStates.promo_code)
+async def admin_promo_input_code(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+    if message.from_user.id not in config.admin_ids: return
+    code = message.text.strip()
+    await state.update_data(promo_code=code)
+    await message.answer(f"Promo Code: {code}\nNow enter maximum number of uses (0 for unlimited):")
+    await state.set_state(AdminStates.promo_uses)
+
+@router.message(AdminStates.promo_uses)
+async def admin_promo_input_uses(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    if message.from_user.id not in config.admin_ids: return
+    try:
+        uses = int(message.text.strip())
+        data = await state.get_data()
+        code = data.get("promo_code")
+        
+        promo = models.Promocode(
+            code=code,
+            max_uses=uses,
+            is_trial_only=True,
+            value=0.0,
+            is_percent=True
+        )
+        session.add(promo)
+        await session.commit()
+        
+        await message.answer(f"✅ Promo code ` {code} ` created with {uses or 'unlimited'} uses.")
+        await state.clear()
+        await cmd_admin(message, state, l10n)
+        
+    except ValueError:
+        await message.answer("Please enter a valid number.")
+    except Exception as e:
+        await session.rollback()
+        await message.answer(f"Error creating promo code: {e}")
+
+@router.message(F.text.startswith("/del_promo_"))
+async def admin_promo_delete(message: types.Message, session, state: FSMContext, l10n: FluentLocalization):
+    if message.from_user.id not in config.admin_ids: return
+    code = message.text.replace("/del_promo_", "").strip()
+    from sqlalchemy import delete
+    stmt = delete(models.Promocode).where(models.Promocode.code == code, models.Promocode.is_trial_only == True)
+    await session.execute(stmt)
+    await session.commit()
+    await message.answer(f"✅ Promo code ` {code} ` deleted.")
+    await cmd_admin(message, state, l10n)
