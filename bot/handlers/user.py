@@ -113,6 +113,7 @@ async def check_existing_accounts(user_id: int):
                 else:
                     manual.append(u)
             
+        manual.sort(key=lambda x: x.get('username', '').lower())
         return standard, manual
     except Exception as e:
         logger.error("check_accounts_error", error=str(e), user_id=user_id)
@@ -659,6 +660,7 @@ async def show_devices_list(callback: types.CallbackQuery, session, l10n: Fluent
         # Deduplicate by UUID just in case
         unique_accs = {a['uuid']: a for a in all_accs}.values()
         all_accs = list(unique_accs)
+        all_accs.sort(key=lambda x: x.get('username', '').lower())
         
         if len(all_accs) > 1:
             # Show Selection Menu

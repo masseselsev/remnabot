@@ -175,6 +175,7 @@ async def admin_search_user_process(message: types.Message, state: FSMContext, s
         return
         
     await message.answer(f"Fetching data for {target_id}...")
+    await state.update_data(search_target_id=target_id)
     
     from bot.handlers.user import check_existing_accounts
     from bot.services.remnawave import api
@@ -186,6 +187,7 @@ async def admin_search_user_process(message: types.Message, state: FSMContext, s
     all_accs = []
     if std_acc: all_accs.append(std_acc)
     all_accs.extend(manual_accs)
+    all_accs.sort(key=lambda x: x.get('username', '').lower())
     
     if not all_accs and not db_user:
         await message.answer(f"User {target_id} not found in DB or Panel.")
@@ -300,9 +302,24 @@ async def admin_show_devices_list(callback: types.CallbackQuery, state: FSMConte
         # pass hwid up to 10 chars, fetch full later
         cb_data = f"adm_ddev_{hwid[:10]}"
         kb_rows.append([types.InlineKeyboardButton(text=btn_text, callback_data=cb_data)])
+    kb_rows.append([types.InlineKeyboardButton(text="🔙 Back", callback_data="adm_back_user_search")])
         
     # No convenient back button without re-generating profile, but this replaces the message inline or opens a new one
     await callback.message.edit_text("Select a device to view or manage:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows))
+
+
+@router.callback_query(F.data == "adm_back_user_search")
+async def admin_back_user_search(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
+    data = await state.get_data()
+    target_id = data.get('search_target_id')
+    if not target_id:
+        await callback.answer("Context lost. Please search again.", show_alert=True)
+        return
+    
+    # We must delete current msg and send new one as a message.answer or just re-run search logic
+    # To keep it simple, we just re-run search logic (this will send a NEW message, which is fine)
+    await callback.message.delete()
+    await admin_search_user_process(callback.message, state, session, l10n, override_id=target_id)
 
 
 @router.callback_query(F.data.startswith("adm_ddev_"))
