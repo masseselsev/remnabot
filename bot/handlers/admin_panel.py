@@ -89,8 +89,7 @@ async def admin_exit(callback: types.CallbackQuery, state: FSMContext, l10n: Flu
     btn_support = l10n.format_value("btn-support")
     
     kb = [
-        [types.KeyboardButton(text=btn_shop), types.KeyboardButton(text=btn_profile)],
-        [types.KeyboardButton(text=btn_trial), types.KeyboardButton(text=btn_support)]
+        [types.KeyboardButton(text=btn_profile), types.KeyboardButton(text=btn_trial), types.KeyboardButton(text=btn_support)]
     ]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     
