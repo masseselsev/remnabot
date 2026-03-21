@@ -27,8 +27,13 @@ async def check_existing_accounts(user_id: int):
         candidates = []
         try:
             direct_user = await api.get_user_by_telegram_id(user_id)
-            if direct_user and isinstance(direct_user, dict) and (direct_user.get('uuid') or direct_user.get('username')):
+            if isinstance(direct_user, list):
+                candidates = direct_user
+            elif direct_user and isinstance(direct_user, dict) and (direct_user.get('uuid') or direct_user.get('username')):
                 candidates = [direct_user]
+                
+            if not candidates:
+                raise ValueError("Empty response, fallback to search")
         except Exception:
             # Fallback to search if direct lookup fails
             resp = await api.get_users(search=str(user_id))
