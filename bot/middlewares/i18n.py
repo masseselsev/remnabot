@@ -7,8 +7,12 @@ from bot.database import models
 from sqlalchemy import select
 
 class I18nMiddleware(BaseMiddleware):
+    @staticmethod
+    def get_loader():
+        return FluentResourceLoader("bot/services/locales/{locale}")
+
     def __init__(self):
-        loader = FluentResourceLoader("bot/services/locales/{locale}")
+        loader = self.get_loader()
         self.l10n_en = FluentLocalization(["en"], ["messages.ftl"], loader)
         self.l10n_ru = FluentLocalization(["ru"], ["messages.ftl"], loader)
 
@@ -18,6 +22,8 @@ class I18nMiddleware(BaseMiddleware):
         event: Update,
         data: Dict[str, Any],
     ) -> Any:
+        import structlog
+        logger = structlog.get_logger()
         user: Union[User, None] = data.get("event_from_user")
         
         if not user:

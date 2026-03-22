@@ -540,6 +540,18 @@ async def set_language(callback: types.CallbackQuery, session, l10n: FluentLocal
     if user:
         user.language_code = lang_code
         await session.commit()
+    else:
+        from bot.database.models import User
+        # If user doesn't exist for some reason, create them so preferences stick
+        new_user = User(
+            id=callback.from_user.id,
+            username=callback.from_user.username,
+            full_name=callback.from_user.full_name,
+            language_code=lang_code
+        )
+        session.add(new_user)
+        await session.commit()
+
     
     # We must use the l10n object that matches the new language
     # or rely on the middleware to provide it if we answered later.
@@ -548,18 +560,20 @@ async def set_language(callback: types.CallbackQuery, session, l10n: FluentLocal
     # For now, let's just use the provided l10n if it's already switched, 
     # or simpler: hardcode or re-fetch.
     # Actually, the middleware usually provides l10n based on DB. 
-    # Since we just committed, if we re-fetch 'l10n' or just use the keys:
-    
+    # Fetch correct l10n for new language
+    from bot.middlewares.i18n import I18nMiddleware
+    # Actually, easier to just manually select based on lang_code
+    # since we know the middleware's loader logic.
+    # But a cleaner way:
     if lang_code == "ru":
-        text = "✅ Язык изменен на Русский.\nМеню обновлено."
-        btn_profile = "👤 Профиль"
-        btn_trial = "🎁 3 дня бесплатно!"
-        btn_support = "🆘 Поддержка"
+        new_l10n = FluentLocalization(["ru"], ["messages.ftl"], I18nMiddleware.get_loader())
     else:
-        text = "✅ Language changed to English.\nMenu updated."
-        btn_profile = "👤 Profile"
-        btn_trial = "🎁 3-day trial!"
-        btn_support = "🆘 Support"
+        new_l10n = FluentLocalization(["en"], ["messages.ftl"], I18nMiddleware.get_loader())
+
+    text = new_l10n.format_value("lang-changed-msg")
+    btn_profile = new_l10n.format_value("btn-profile")
+    btn_trial = new_l10n.format_value("btn-trial")
+    btn_support = new_l10n.format_value("btn-support")
 
     kb = [
         [types.KeyboardButton(text=btn_profile), types.KeyboardButton(text=btn_trial), types.KeyboardButton(text=btn_support)]
@@ -705,7 +719,7 @@ async def show_device_details(callback: types.CallbackQuery, session, l10n: Flue
             break
             
     if not target_uuid:
-        await callback.answer("❌ Account context lost.", show_alert=True)
+        await callback.answer(l10n.format_value("error-context-lost"), show_alert=True)
         return
     
     # Fetch devices for THAT account
@@ -798,7 +812,7 @@ async def ask_delete_device(callback: types.CallbackQuery, session, l10n: Fluent
             break
             
     if not target_uuid:
-        await callback.answer("❌ Account context lost.", show_alert=True)
+        await callback.answer(l10n.format_value("error-context-lost"), show_alert=True)
         return
 
     # Fetch device to get Name + Full HWID
@@ -854,7 +868,7 @@ async def process_delete_device_wrapper(callback: types.CallbackQuery, session, 
             break
             
      if not target_uuid:
-         await callback.answer("❌ Account context lost.", show_alert=True)
+         await callback.answer(l10n.format_value("error-context-lost"), show_alert=True)
          return
 
      from bot.services.remnawave import api
@@ -896,7 +910,7 @@ async def back_to_profile(callback: types.CallbackQuery, session, l10n: FluentLo
     if text:
         await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML", disable_web_page_preview=True)
     else:
-        await callback.answer("Error loading profile", show_alert=True)
+        await callback.answer(l10n.format_value("error-profile-load"), show_alert=True)
 
 
 @router.callback_query(F.data.startswith("link_acc_"))
@@ -1053,6 +1067,6 @@ async def execute_trial_creation(messageable, session, l10n: FluentLocalization,
             disable_web_page_preview=True
         )
     else:
-        await messageable.answer("❌ Failed to activate trial. Please contact support.")
+        await messageable.answer(l10n.format_value("trial-failed-msg"))
 
 
