@@ -33,8 +33,6 @@ profile-account-item =
     { $traffic }
     { $link }
 
-profile-link = 🔗 Ссылка: { $link }
-
 subscription-active = ✅ Активна до { $date }
 subscription-expired = ❌ Истекла { $date }
 subscription-none = ❌ Нет активной подписки
@@ -100,6 +98,21 @@ support-recap-title = 📝 **История переписки:**
 support-you = Вы
 support-agent = Поддержка
 support-media = [Медиа]
+support-help-text = Для получения технической поддержки перейдите сюда: { $link } и напишите в личные сообщения канала.
+support-btn-label = 💬 Поддержка / Support
+lang-changed-msg = ✅ Язык изменен на Русский.\nМеню обновлено.
+trial-failed-msg = ❌ Не удалось активировать пробный период. Обратитесь в поддержку.
+shop-disabled-msg = 🛒 Временно недоступно.
+error-context-lost = ❌ Контекст аккаунта потерян.
+error-profile-load = Ошибка загрузки профиля
+admin-error-no-tgid = Невозможно получить ID пользователя из этого сообщения.
+admin-error-invalid-tgid = Некорректный Telegram ID. Введите число.
+admin-error-no-devices = У этого аккаунта нет подключенных устройств.
+admin-error-context-lost = Контекст потерян. Повторите поиск пользователя.
+admin-error-device-not-found = Устройство не найдено.
+admin-success-device-deleted = Устройство успешно отключено.
+admin-error-tariff-not-found = Тариф не найден.
+admin-error-invalid-number = Пожалуйста, введите корректное число.
 
 # Admin Custom Plans (CP)
 admin-cp-title = 💎 **Спецтарифы**

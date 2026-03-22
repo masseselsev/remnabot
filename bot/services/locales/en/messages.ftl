@@ -1,4 +1,3 @@
-start-welcome = Welcome, { $name }!
 start-welcome = { $settings_msg }
 start-active-sub-title = ℹ️ <b>Active Subscriptions</b>:
 start-active-sub-item = 
@@ -34,8 +33,6 @@ profile-account-item =
     { $traffic }
     { $link }
 
-profile-link = 🔗 Link: { $link }
-
 subscription-active = ✅ Active until { $date }
 subscription-expired = ❌ Expired on { $date }
 subscription-none = ❌ No active subscription
@@ -44,7 +41,6 @@ btn-buy = 🛒 Buy Subscription
 btn-topup = 💳 Top up Balance
 btn-back = 🔙 Back
 shop-select-tariff = 📦 Select a plan:
-profile-tariff = 📦 Plan: { $name }
 profile-tariff = 📦 Plan: { $name }
 trial-activated = ✅ Trial activated!
 trial-active = ✅ Your trial is active!
@@ -83,11 +79,6 @@ device-deleted = ✅ Device disconnected.
 device-delete-fail = ❌ Failed to disconnect device.
 device-confirm-delete = Are you sure you want to disconnect <b>{ $model }</b>?
 
-support-welcome = 
-    👨‍💻 You contacted customer support.
-    Describe your problem or ask a question. An operator will reply shortly.
-    👋 **Welcome to Support!**
-    
     You are chatting with an administrator.
     Describe your issue, and we will reply shortly.
     
@@ -100,6 +91,13 @@ support-recap-title = 📝 **Chat History:**
 support-you = 👤 You
 support-agent = 👨‍💻 Support
 support-media = [Media]
+support-help-text = To get technical support, go here: { $link } and write to the channel's private messages.
+support-btn-label = 💬 Support / Поддержка
+lang-changed-msg = ✅ Language changed to English.\nMenu updated.
+trial-failed-msg = ❌ Failed to activate trial. Please contact support.
+shop-disabled-msg = 🛒 Temporary unavailable.
+error-context-lost = ❌ Account context lost.
+error-profile-load = Error loading profile
 
 # Admin Custom Plans (CP)
 admin-cp-title = 💎 **Custom Plans**
@@ -212,11 +210,11 @@ admin-t-list-btn = List
 admin-t-view-title = 📦 **{ $name }**
 admin-t-view-prices = Prices: { $rub }₽ / { $stars }⭐️ / { $usd }$
 admin-t-view-duration = 📅 Duration: { $days } days
-205: admin-t-view-squad = 🛡 Squad: { $squad }
-206: admin-t-view-traffic = 📊 Traffic Limit: { $traffic } GB
-207: admin-t-btn-grant = 🎁 Give to User
-208: admin-t-grant-ask = Enter user's Telegram ID (numeric):
-209: admin-t-grant-success-full = 
+admin-t-view-squad = 🛡 Squad: { $squad }
+admin-t-view-traffic = 📊 Traffic Limit: { $traffic } GB
+admin-t-btn-grant = 🎁 Give to User
+admin-t-grant-ask = Enter user's Telegram ID (numeric):
+admin-t-grant-success-full = 
     ✅ Plan <b>{ $tariff }</b> granted!
     
     👤 User: { $user_id } { $username }
