@@ -8,4 +8,4 @@ router = Router()
 @router.message(F.text == "🛒 Buy VPN")
 @router.message(F.text == "🛒 Купить VPN")
 async def show_tariffs(message: types.Message, l10n: FluentLocalization):
-    await message.answer("🛒 Temporary unavailable / Временно недоступно")
+    await message.answer(l10n.format_value("shop-disabled-msg"))

@@ -159,11 +159,11 @@ async def admin_intercept_contact_or_forward(message: types.Message, state: FSMC
         if message.forward_origin.type == 'user':
             target_id = message.forward_origin.sender_user.id
         else:
-            await message.answer("Невозможно получить ID пользователя из этого сообщения (возможно профиль скрыт настройками приватности или это канал).")
+            await message.answer(l10n.format_value("admin-error-no-tgid"))
             return
         
     if not target_id:
-        await message.answer("Cannot extract Telegram ID from this message.")
+        await message.answer(l10n.format_value("admin-error-no-tgid"))
         return
         
     await state.set_state(AdminStates.search_user_id)
@@ -175,7 +175,7 @@ async def admin_search_user_process(message: types.Message, state: FSMContext, s
     try:
         target_id = override_id if override_id is not None else int(message.text.strip())
     except ValueError:
-        await message.answer("Invalid Telegram ID. Please send a number.")
+        await message.answer(l10n.format_value("admin-error-invalid-tgid"))
         return
         
     await message.answer(f"Fetching data for {target_id}...")
@@ -280,7 +280,7 @@ async def admin_show_devices_list(callback: types.CallbackQuery, state: FSMConte
         devices = []
         
     if not devices:
-        await callback.answer("No devices found for this account.", show_alert=True)
+        await callback.answer(l10n.format_value("admin-error-no-devices"), show_alert=True)
         return
         
     kb_rows = []
@@ -317,7 +317,7 @@ async def admin_back_user_search(callback: types.CallbackQuery, state: FSMContex
     data = await state.get_data()
     target_id = data.get('search_target_id')
     if not target_id:
-        await callback.answer("Context lost. Please search again.", show_alert=True)
+        await callback.answer(l10n.format_value("admin-error-context-lost"), show_alert=True)
         return
     
     # We must delete current msg and send new one as a message.answer or just re-run search logic
@@ -352,7 +352,7 @@ async def admin_device_details(callback: types.CallbackQuery, state: FSMContext,
             break
             
     if not target_dev:
-        await callback.answer("Device not found.", show_alert=True)
+        await callback.answer(l10n.format_value("admin-error-device-not-found"), show_alert=True)
         return
         
     # Store full hwid for deletion
@@ -397,7 +397,7 @@ async def admin_delete_device(callback: types.CallbackQuery, state: FSMContext, 
     
     try:
         await api.delete_user_device(target_hwid, target_uuid)
-        await callback.answer("Device deleted successfully.", show_alert=True)
+        await callback.answer(l10n.format_value("admin-success-device-deleted"), show_alert=True)
         # Return to device list
         await admin_show_devices_list(callback=types.CallbackQuery(
             id=callback.id,
@@ -961,7 +961,7 @@ async def t_grant_process(message: types.Message, state: FSMContext, session, l1
 
         tariff = await session.get(models.Tariff, tid)
         if not tariff:
-            await message.answer("Tariff not found")
+            await message.answer(l10n.format_value("admin-error-tariff-not-found"))
             return
 
         # Create paid order manually
@@ -1112,7 +1112,7 @@ async def admin_promo_input_uses(message: types.Message, state: FSMContext, sess
         await cmd_admin(message, state, l10n)
         
     except ValueError:
-        await message.answer("Please enter a valid number.")
+        await message.answer(l10n.format_value("admin-error-invalid-number"))
     except Exception as e:
         await session.rollback()
         await message.answer(f"Error creating promo code: {e}")
