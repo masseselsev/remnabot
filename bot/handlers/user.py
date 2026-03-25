@@ -569,11 +569,11 @@ async def cmd_instruction_msg(message: types.Message, l10n: FluentLocalization):
 @router.callback_query(F.data == "change_lang")
 async def show_language_selector(callback: types.CallbackQuery, l10n: FluentLocalization):
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="🇺🇸 English", callback_data="set_lang_en")],
-        [types.InlineKeyboardButton(text="🇷🇺 Русский", callback_data="set_lang_ru")],
+        [types.InlineKeyboardButton(text=l10n.format_value("lang-en"), callback_data="set_lang_en")],
+        [types.InlineKeyboardButton(text=l10n.format_value("lang-ru"), callback_data="set_lang_ru")],
         [types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="back_profile")]
     ])
-    await callback.message.edit_text("Select language / Выберите язык:", reply_markup=kb)
+    await callback.message.edit_text(l10n.format_value("lang-selector-title"), reply_markup=kb)
 
 @router.callback_query(F.data == "delete_msg")
 async def delete_msg(callback: types.CallbackQuery):

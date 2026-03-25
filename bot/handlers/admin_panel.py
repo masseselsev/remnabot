@@ -61,8 +61,8 @@ async def get_main_kb(l10n: FluentLocalization):
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-tariffs"), callback_data="admin_tariffs_list")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-trial"), callback_data="admin_trial")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-cp"), callback_data="admin_cp_list")],
-        [types.InlineKeyboardButton(text="🔍 View User by TgID", callback_data="admin_search_user")],
-        [types.InlineKeyboardButton(text="🎟 Promo Codes", callback_data="admin_promos_list")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-search-user"), callback_data="admin_search_user")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-promos"), callback_data="admin_promos_list")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-welcome"), callback_data="admin_welcome_mgmt")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-exit"), callback_data="admin_exit")]
     ])
@@ -305,10 +305,10 @@ async def admin_show_devices_list(callback: types.CallbackQuery, state: FSMConte
         # pass hwid up to 10 chars, fetch full later
         cb_data = f"adm_ddev_{hwid[:10]}"
         kb_rows.append([types.InlineKeyboardButton(text=btn_text, callback_data=cb_data)])
-    kb_rows.append([types.InlineKeyboardButton(text="🔙 Back", callback_data="adm_back_user_search")])
+    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="adm_back_user_search")])
         
     # No convenient back button without re-generating profile, but this replaces the message inline or opens a new one
-    await callback.message.edit_text("Select a device to view or manage:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows))
+    await callback.message.edit_text(l10n.format_value("devices-select-account"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows))
 
 
 @router.callback_query(F.data == "adm_back_user_search")
@@ -332,7 +332,7 @@ async def admin_device_details(callback: types.CallbackQuery, state: FSMContext,
     target_uuid = data.get('admin_manage_uuid')
     
     if not target_uuid:
-        await callback.answer("Context lost. Search user again.", show_alert=True)
+        await callback.answer(l10n.format_value("admin-error-context-lost"), show_alert=True)
         return
         
     from bot.services.remnawave import api
@@ -389,7 +389,7 @@ async def admin_delete_device(callback: types.CallbackQuery, state: FSMContext, 
     target_hwid = data.get('admin_manage_hwid')
     
     if not target_uuid or not target_hwid:
-        await callback.answer("Context lost.", show_alert=True)
+        await callback.answer(l10n.format_value("admin-error-context-lost"), show_alert=True)
         return
         
     from bot.services.remnawave import api
@@ -1077,7 +1077,7 @@ async def admin_promos_list(callback: types.CallbackQuery, session, l10n: Fluent
 
 @router.callback_query(F.data == "admin_promo_add")
 async def admin_promo_add_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
-    await callback.message.edit_text("Enter the promo code string (e.g. TRIAL2026):")
+    await callback.message.edit_text(l10n.format_value("admin-promo-ask"))
     await state.set_state(AdminStates.promo_code)
 
 @router.message(AdminStates.promo_code)

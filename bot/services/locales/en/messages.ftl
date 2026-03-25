@@ -106,10 +106,12 @@ device-deleted = ✅ Device disconnected.
 device-delete-fail = ❌ Failed to disconnect device.
 device-confirm-delete = Are you sure you want to disconnect <b>{ $model }</b>?
 
+support-welcome = 
+    👋 **Welcome to Support!**
+    
     You are chatting with an administrator.
     Describe your issue, and we will reply shortly.
-    
-    Send `/start` or the button below to end the chat.
+    To end the chat, send `/start`.
 support-sent = ✅ Message sent.
 support-reply = 👨‍💻 Support: { $text }
 support-exit = 🚪 Support session ended.
@@ -120,11 +122,26 @@ support-agent = 👨‍💻 Support
 support-media = [Media]
 support-help-text = To get technical support, go here: { $link } and write to the channel's private messages.
 support-btn-label = 💬 Support / Поддержка
-lang-changed-msg = ✅ Language changed to English.\nMenu updated.
+error-profile-load = Error loading profile
 trial-failed-msg = ❌ Failed to activate trial. Please contact support.
 shop-disabled-msg = 🛒 Temporary unavailable.
 error-context-lost = ❌ Account context lost.
-error-profile-load = Error loading profile
+
+lang-selector-title = Select language:
+lang-ru = 🇷🇺 Русский
+lang-en = 🇺🇸 English
+lang-changed-msg = ✅ Language changed to English.\nMenu updated.
+
+admin-btn-search-user = 🔍 Find user by TgID
+admin-btn-promos = 🎟 Promo Codes
+admin-error-no-tgid = Cannot get user ID from this message.
+admin-error-invalid-tgid = Invalid Telegram ID. Enter a number.
+admin-error-no-devices = This account has no connected devices.
+admin-error-context-lost = Context lost. Search user again.
+admin-error-device-not-found = Device not found.
+admin-success-device-deleted = Device successfully disconnected.
+admin-error-tariff-not-found = Plan not found.
+admin-error-invalid-number = Please enter a valid number.
 
 # Admin Custom Plans (CP)
 admin-cp-title = 💎 **Custom Plans**
