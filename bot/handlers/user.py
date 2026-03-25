@@ -706,11 +706,17 @@ async def show_devices_list(callback: types.CallbackQuery, session, l10n: Fluent
     # Let's Assume: We pass `target_uuid` in button "Back" navigation, but for item details...
     # We can use `d_{uuid_prefix}_{short_hwid}` and search efficiently.
         
+    # Back button logic
+    back_callback = "back_profile"
+    if callback.data.startswith("dev_acc_"):
+        back_callback = "my_devices"
+
     if not devices:
         kb = types.InlineKeyboardMarkup(inline_keyboard=[
-             [types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data=f"my_devices")] 
+             [types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data=back_callback)] 
         ])
         await callback.message.edit_text(l10n.format_value("devices-empty"), reply_markup=kb, parse_mode="HTML")
+        await callback.answer()
         return
 
     kb_rows = []
@@ -742,12 +748,12 @@ async def show_devices_list(callback: types.CallbackQuery, session, l10n: Fluent
         cb_data = f"dev_{target_uuid[:8]}_{hwid[:10]}"
         kb_rows.append([types.InlineKeyboardButton(text=btn_text, callback_data=cb_data)])
     
-    # Back button logic
-    # If explicitly viewing account, back goes to "my_devices" (which checks list again)
-    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="my_devices")])
+    # Back button logic (already calculated above)
+    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data=back_callback)])
     
     msg_text = l10n.format_value("devices-title")
     await callback.message.edit_text(msg_text, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="Markdown")
+    await callback.answer()
 
 @router.callback_query(F.data.startswith("dev_"))
 async def show_device_details(callback: types.CallbackQuery, session, l10n: FluentLocalization):
@@ -966,6 +972,7 @@ async def back_to_profile(callback: types.CallbackQuery, session, l10n: FluentLo
         await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML", disable_web_page_preview=True)
     else:
         await callback.answer(l10n.format_value("error-profile-load"), show_alert=True)
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("link_acc_"))
