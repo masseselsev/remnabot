@@ -57,7 +57,12 @@ trial-promo-request = 🎟 Пожалуйста, введите промокод
 trial-promo-invalid = ❌ Неверный или использованный промокод.
 trial-promo-cancelled = ❌ Ввод промокода отменен.
 
-trial-instruction-title = 📖 <b>Инструкция по подключению:</b>
+trial-instruction-title = 📖 <b>Инструкция по подключению</b>
+
+trial-instruction-http-subtitle = 🔸 <b>Вариант 1 (ссылки типа https://catapult...)</b>
+trial-instruction-http-steps = Перейдите по ссылке и следуйте инструкциям на открывшейся странице.
+
+trial-instruction-happ-subtitle = 🔸 <b>Вариант 2 (ссылки типа happ://...)</b>
 trial-instruction-apps = 
     1️⃣ <b>Скачайте приложение Happ:</b>
     • <a href="https://play.google.com/store/apps/details?id=com.happproxy">Android (Google Play)</a>

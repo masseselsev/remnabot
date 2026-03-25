@@ -57,7 +57,12 @@ trial-promo-request = 🎟 Please enter a promo code to activate your 3-day free
 trial-promo-invalid = ❌ Invalid or used promo code.
 trial-promo-cancelled = ❌ Promo code entry cancelled.
 
-trial-instruction-title = 📖 <b>How to Connect:</b>
+trial-instruction-title = 📖 <b>Setup Instructions</b>
+
+trial-instruction-http-subtitle = 🔸 <b>Option 1 (links like https://catapult...)</b>
+trial-instruction-http-steps = Follow the link and follow the instructions on the page.
+
+trial-instruction-happ-subtitle = 🔸 <b>Option 2 (links like happ://...)</b>
 trial-instruction-apps = 
     1️⃣ <b>Download Happ app:</b>
     • <a href="https://play.google.com/store/apps/details?id=com.happproxy">Android (Google Play)</a>
