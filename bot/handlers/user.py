@@ -12,6 +12,7 @@ from dateutil import parser
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.services.settings import SettingsService
+from bot.utils.crypto import get_crypto_link
 import structlog
 
 router = Router()
@@ -229,6 +230,9 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                     traffic_str = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "percent": percent, "bar": bar_str})
                     link = acc.get('subscriptionUrl') or f"{config.remnawave_url}/sub/{acc['uuid']}"
                     
+                    if "TRIAL_YES" in (acc.get('tag') or ""):
+                        link = await get_crypto_link(link)
+
                     uname = acc.get('username', 'Unknown')
                     
                     item = [
@@ -326,6 +330,9 @@ async def show_active_trial_info(messageable, data, uuid, l10n: FluentLocalizati
     link = data.get('subscriptionUrl')
     if not link:
         link = f"{config.remnawave_url}/sub/{uuid}"
+    
+    # Always encrypt for this trial info display
+    link = await get_crypto_link(link)
     
     traffic_bytes = data.get('trafficLimitBytes') or data.get('dataLimit') or 0
     traffic_gb = round(int(traffic_bytes) / (1024**3), 1)
@@ -433,6 +440,10 @@ async def generate_profile_content(user_id, session, l10n):
         if not main_link:
              main_link = f"{config.remnawave_url}/sub/{user.remnawave_uuid}"
         
+        # Encrypt if it's a trial
+        if "TRIAL_YES" in (found_user_data.get('tag') or ""):
+            main_link = await get_crypto_link(main_link)
+
         t_link = l10n.format_value("profile-link", {"link": main_link})
         traffic_info += f"\n{t_link}"
 
@@ -495,6 +506,9 @@ async def generate_profile_content(user_id, session, l10n):
             if not link:
                 link = f"{config.remnawave_url}/sub/{acc.get('uuid')}"
             
+            if "TRIAL_YES" in (acc.get('tag') or ""):
+                link = await get_crypto_link(link)
+
             t_link = l10n.format_value("profile-link", {"link": link})
             
             item_text = l10n.format_value("profile-account-item", {
@@ -1034,6 +1048,9 @@ async def execute_trial_creation(messageable, session, l10n: FluentLocalization,
              if not link:
                  link = f"{config.remnawave_url}/sub/{user.remnawave_uuid}"
             
+             # Encrypt trial link
+             link = await get_crypto_link(link)
+            
              # Parse details
              traffic_bytes = data.get('trafficLimitBytes') or data.get('dataLimit') or 0
              traffic_gb = round(int(traffic_bytes) / (1024**3), 1)
@@ -1067,7 +1084,7 @@ async def execute_trial_creation(messageable, session, l10n: FluentLocalization,
                      pass
 
         except Exception:
-             link = f"{config.remnawave_url}/sub/{user.remnawave_uuid}"
+             link = await get_crypto_link(f"{config.remnawave_url}/sub/{user.remnawave_uuid}")
              traffic_gb = tariff.traffic_limit_gb
              expire_display = f"{tariff.duration_days} Days"
              
