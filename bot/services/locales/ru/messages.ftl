@@ -56,6 +56,23 @@ trial-promo-request = 🎟 Пожалуйста, введите промокод
 trial-promo-invalid = ❌ Неверный или использованный промокод.
 trial-promo-cancelled = ❌ Ввод промокода отменен.
 
+trial-instruction-title = 📖 <b>Инструкция по подключению:</b>
+trial-instruction-apps = 
+    1️⃣ <b>Скачайте приложение Happ:</b>
+    • <a href="https://play.google.com/store/apps/details?id=com.happproxy">Android (Google Play)</a>
+    • <a href="https://apps.apple.com/us/app/happ-proxy-utility/id6504287215?platform=iphone">iPhone / iPad</a>
+    • <a href="https://github.com/Happ-proxy/happ-android/releases/latest/download/Happ.apk">Android (.apk)</a>
+    • <a href="https://github.com/Happ-proxy/happ-desktop/releases/latest/download/setup-Happ.x64.exe">Windows (PC)</a>
+    • <a href="https://apps.apple.com/us/app/happ-proxy-utility/id6504287215?platform=mac">MacOS</a>
+    • <a href="https://github.com/Happ-proxy">Другие платформы</a>
+
+trial-instruction-steps = 
+    2️⃣ <b>Как добавить подписку:</b>
+    • Скопируйте вашу ссылку <code>happ://...</code> выше.
+    • Откройте приложение <b>Happ</b>.
+    • Нажмите на кнопку <b>"+"</b>.
+    • Вставьте ссылку из буфера обмена.
+
 account-found-manual = 
     🔍 **Найден существующий аккаунт:**
     

@@ -354,11 +354,18 @@ async def show_active_trial_info(messageable, data, uuid, l10n: FluentLocalizati
     msg_expires = l10n.format_value("trial-expires", {"date": expire_display})
     msg_link = l10n.format_value("trial-link-caption")
           
+    instruction = (
+        f"<b>{l10n.format_value('trial-instruction-title')}</b>\n"
+        f"{l10n.format_value('trial-instruction-apps')}\n"
+        f"{l10n.format_value('trial-instruction-steps')}"
+    )
+
     await messageable.answer(
         f"{msg_active}\n\n"
         f"{msg_traffic}\n"
         f"{msg_expires}\n\n"
-        f"{msg_link}\n<code>{link}</code>",
+        f"{msg_link}\n<code>{link}</code>\n\n"
+        f"{instruction}",
         disable_web_page_preview=True,
         parse_mode="HTML"
     )
@@ -1094,11 +1101,18 @@ async def execute_trial_creation(messageable, session, l10n: FluentLocalization,
         msg_expires = l10n.format_value("trial-expires", {"date": expire_display})
         msg_link = l10n.format_value("trial-link-caption")
               
+        instruction = (
+            f"<b>{l10n.format_value('trial-instruction-title')}</b>\n"
+            f"{l10n.format_value('trial-instruction-apps')}\n"
+            f"{l10n.format_value('trial-instruction-steps')}"
+        )
+
         await messageable.answer(
             f"{msg_activated}\n\n"
             f"{msg_traffic}\n"
             f"{msg_expires}\n\n"
-            f"{msg_link}\n<code>{link}</code>",
+            f"{msg_link}\n<code>{link}</code>\n\n"
+            f"{instruction}",
             disable_web_page_preview=True,
             parse_mode="HTML"
         )

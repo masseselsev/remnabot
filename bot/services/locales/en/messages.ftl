@@ -56,6 +56,23 @@ trial-promo-request = 🎟 Please enter a promo code to activate your 3-day free
 trial-promo-invalid = ❌ Invalid or used promo code.
 trial-promo-cancelled = ❌ Promo code entry cancelled.
 
+trial-instruction-title = 📖 <b>How to Connect:</b>
+trial-instruction-apps = 
+    1️⃣ <b>Download Happ app:</b>
+    • <a href="https://play.google.com/store/apps/details?id=com.happproxy">Android (Google Play)</a>
+    • <a href="https://apps.apple.com/us/app/happ-proxy-utility/id6504287215?platform=iphone">iPhone / iPad</a>
+    • <a href="https://github.com/Happ-proxy/happ-android/releases/latest/download/Happ.apk">Android (.apk)</a>
+    • <a href="https://github.com/Happ-proxy/happ-desktop/releases/latest/download/setup-Happ.x64.exe">Windows (PC)</a>
+    • <a href="https://apps.apple.com/us/app/happ-proxy-utility/id6504287215?platform=mac">MacOS</a>
+    • <a href="https://github.com/Happ-proxy">Other platforms</a>
+
+trial-instruction-steps = 
+    2️⃣ <b>How to add subscription:</b>
+    • Copy your <code>happ://...</code> link from above.
+    • Open <b>Happ</b> app.
+    • Tap the <b>"+"</b> button.
+    • Insert from clipboard.
+
 account-found-manual = 
     🔍 **Found existing account:**
     
