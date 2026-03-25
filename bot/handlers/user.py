@@ -239,7 +239,7 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                         f"{idx}. 👤 <b>{escape(uname)}</b>",
                         f"📅 {l10n.format_value('profile-expiry-caption') or 'До:'} {exp_date}",
                         f"{traffic_str}",
-                        f"🔗 {link}"
+                        f"🔗 <code>{link}</code>"
                     ]
                     sub_lines.append("\n".join(item))
 
@@ -358,7 +358,7 @@ async def show_active_trial_info(messageable, data, uuid, l10n: FluentLocalizati
         f"{msg_active}\n\n"
         f"{msg_traffic}\n"
         f"{msg_expires}\n\n"
-        f"{msg_link}\n{link}",
+        f"{msg_link}\n<code>{link}</code>",
         disable_web_page_preview=True
     )
 
@@ -1097,7 +1097,7 @@ async def execute_trial_creation(messageable, session, l10n: FluentLocalization,
             f"{msg_activated}\n\n"
             f"{msg_traffic}\n"
             f"{msg_expires}\n\n"
-            f"{msg_link}\n{link}",
+            f"{msg_link}\n<code>{link}</code>",
             disable_web_page_preview=True
         )
     else:

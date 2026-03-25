@@ -22,7 +22,7 @@ profile-status = Статус: { $status }
 profile-expiry = 📅 Активна до { $date }
 profile-expiry-caption = Активна до
 profile-traffic = 📊 Трафик: { $used } / { $limit } GB ({ $percent }%) { $bar }
-profile-link = 🔗 Ссылка: { $link }
+profile-link = 🔗 Ссылка: <code>{ $link }</code>
 
 profile-additional-accounts = 
     <b>##########################</b>

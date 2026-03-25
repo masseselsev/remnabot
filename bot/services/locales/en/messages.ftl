@@ -22,7 +22,7 @@ profile-status = Status: { $status }
 profile-expiry = 📅 Active until { $date }
 profile-expiry-caption = Active until
 profile-traffic = 📊 Traffic: { $used } / { $limit } GB ({ $percent }%) { $bar }
-profile-link = 🔗 Link: { $link }
+profile-link = 🔗 Link: <code>{ $link }</code>
 
 profile-additional-accounts = 
     <b>##########################</b>
