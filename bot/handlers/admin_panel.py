@@ -1072,7 +1072,7 @@ async def admin_promos_list(callback: types.CallbackQuery, session, l10n: Fluent
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(text="➕ Add Promo", callback_data="admin_promo_add")],
-        [types.InlineKeyboardButton(text="🔙 Back", callback_data="admin_panel")]
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_menu")]
     ])
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
 
