@@ -12,11 +12,12 @@ async def get_crypto_link(url: str) -> str:
         async with aiohttp.ClientSession() as session:
             async with session.post(api_url, json={"url": url}, timeout=10) as resp:
                 if resp.status == 200:
-                    encrypted_url = await resp.text()
-                    if encrypted_url.startswith("http"):
+                    data = await resp.json()
+                    encrypted_url = data.get("encrypted_link")
+                    if encrypted_url:
                         return encrypted_url.strip()
                     else:
-                        logger.warning("crypto_api_unexpected_response", response=encrypted_url)
+                        logger.warning("crypto_api_missing_key", response=await resp.text())
                 else:
                     logger.warning("crypto_api_error_status", status=resp.status)
     except Exception as e:
