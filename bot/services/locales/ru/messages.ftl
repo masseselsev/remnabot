@@ -12,6 +12,7 @@ btn-devices = 📱 Мои устройства
 btn-yes = ✅ Да
 btn-no = ❌ Нет
 btn-support = 🆘 Поддержка
+btn-instruction = 📖 Инструкция
 btn-trial = 🎁 3 дня бесплатно!
 
 profile-title = 👤 Ваш профиль

@@ -13,6 +13,7 @@ btn-yes = ✅ Yes
 btn-no = ❌ No
 btn-trial = 🎁 3-day trial!
 btn-support = 🆘 Support
+btn-instruction = 📖 Instruction
 
 profile-title = 👤 Your Profile
 profile-id = 👤 Tg ID: { $id }

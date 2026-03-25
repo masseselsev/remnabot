@@ -84,12 +84,11 @@ async def admin_exit(callback: types.CallbackQuery, state: FSMContext, l10n: Flu
     
     # Restore Main Menu
     btn_shop = l10n.format_value("btn-shop")
-    btn_profile = l10n.format_value("btn-profile")
-    btn_trial = l10n.format_value("btn-trial")
-    btn_support = l10n.format_value("btn-support")
+    btn_instruction = l10n.format_value("btn-instruction")
     
     kb = [
-        [types.KeyboardButton(text=btn_profile), types.KeyboardButton(text=btn_trial), types.KeyboardButton(text=btn_support)]
+        [types.KeyboardButton(text=btn_profile), types.KeyboardButton(text=btn_trial)],
+        [types.KeyboardButton(text=btn_support), types.KeyboardButton(text=btn_instruction)]
     ]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     
