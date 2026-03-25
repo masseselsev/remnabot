@@ -357,7 +357,8 @@ async def show_active_trial_info(messageable, data, uuid, l10n: FluentLocalizati
     msg_link = l10n.format_value("trial-link-caption")
           
     instruction = (
-        f"{l10n.format_value('trial-instruction-title')}\n\n"
+        f"{l10n.format_value('trial-instruction-title')}\n"
+        f"{l10n.format_value('trial-instruction-profile-hint')}\n\n"
         f"{l10n.format_value('trial-instruction-http-subtitle')}\n"
         f"{l10n.format_value('trial-instruction-http-steps')}\n\n"
         f"{l10n.format_value('trial-instruction-happ-subtitle')}\n"
@@ -561,7 +562,8 @@ async def process_profile(message: types.Message, session, l10n: FluentLocalizat
 @router.message(F.text == "📖 Инструкция")
 async def cmd_instruction_msg(message: types.Message, l10n: FluentLocalization):
     instruction = (
-        f"{l10n.format_value('trial-instruction-title')}\n\n"
+        f"{l10n.format_value('trial-instruction-title')}\n"
+        f"{l10n.format_value('trial-instruction-profile-hint')}\n\n"
         f"{l10n.format_value('trial-instruction-http-subtitle')}\n"
         f"{l10n.format_value('trial-instruction-http-steps')}\n\n"
         f"{l10n.format_value('trial-instruction-happ-subtitle')}\n"
@@ -1122,7 +1124,8 @@ async def execute_trial_creation(messageable, session, l10n: FluentLocalization,
         msg_link = l10n.format_value("trial-link-caption")
               
         instruction = (
-            f"{l10n.format_value('trial-instruction-title')}\n\n"
+            f"{l10n.format_value('trial-instruction-title')}\n"
+            f"{l10n.format_value('trial-instruction-profile-hint')}\n\n"
             f"{l10n.format_value('trial-instruction-http-subtitle')}\n"
             f"{l10n.format_value('trial-instruction-http-steps')}\n\n"
             f"{l10n.format_value('trial-instruction-happ-subtitle')}\n"
