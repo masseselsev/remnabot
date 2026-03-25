@@ -356,15 +356,8 @@ async def show_active_trial_info(messageable, data, uuid, l10n: FluentLocalizati
     msg_expires = l10n.format_value("trial-expires", {"date": expire_display})
     msg_link = l10n.format_value("trial-link-caption")
           
-    instruction = (
-        f"{l10n.format_value('trial-instruction-title')}\n"
-        f"{l10n.format_value('trial-instruction-profile-hint')}\n\n"
-        f"{l10n.format_value('trial-instruction-http-subtitle')}\n"
-        f"{l10n.format_value('trial-instruction-http-steps')}\n\n"
-        f"{l10n.format_value('trial-instruction-happ-subtitle')}\n"
-        f"{l10n.format_value('trial-instruction-apps')}\n"
-        f"{l10n.format_value('trial-instruction-steps')}"
-    )
+    instruction = l10n.format_value('trial-instruction-hint')
+
 
     await messageable.answer(
         f"{msg_active}\n\n"
@@ -1130,15 +1123,7 @@ async def execute_trial_creation(messageable, session, l10n: FluentLocalization,
         msg_expires = l10n.format_value("trial-expires", {"date": expire_display})
         msg_link = l10n.format_value("trial-link-caption")
               
-        instruction = (
-            f"{l10n.format_value('trial-instruction-title')}\n"
-            f"{l10n.format_value('trial-instruction-profile-hint')}\n\n"
-            f"{l10n.format_value('trial-instruction-http-subtitle')}\n"
-            f"{l10n.format_value('trial-instruction-http-steps')}\n\n"
-            f"{l10n.format_value('trial-instruction-happ-subtitle')}\n"
-            f"{l10n.format_value('trial-instruction-apps')}\n"
-            f"{l10n.format_value('trial-instruction-steps')}"
-        )
+        instruction = l10n.format_value('trial-instruction-hint')
 
         await messageable.answer(
             f"{msg_activated}\n\n"

@@ -60,6 +60,7 @@ trial-promo-cancelled = ❌ Ввод промокода отменен.
 trial-instruction-title = 📖 <b>Инструкция по подключению</b>
 
 trial-instruction-profile-hint = Нажмите кнопку 👤 <b>Профиль</b>, чтобы увидеть ваши активные подписки и ссылки на них.
+trial-instruction-hint = Нажмите 📖 <b>Инструкция</b> и следуйте ей для подключения.
 
 trial-instruction-http-subtitle = 🔸 <b>Вариант 1 (ссылки типа https://catapult...)</b>
 trial-instruction-http-steps = Перейдите по ссылке и следуйте инструкциям на открывшейся странице.

@@ -60,6 +60,7 @@ trial-promo-cancelled = ❌ Promo code entry cancelled.
 trial-instruction-title = 📖 <b>Setup Instructions</b>
 
 trial-instruction-profile-hint = Click the 👤 <b>Profile</b> button to see your active subscriptions and links.
+trial-instruction-hint = Click 📖 <b>Instruction</b> and follow it to connect.
 
 trial-instruction-http-subtitle = 🔸 <b>Option 1 (links like https://catapult...)</b>
 trial-instruction-http-steps = Follow the link and follow the instructions on the page.
