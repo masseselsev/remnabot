@@ -1032,23 +1032,28 @@ async def process_trial_promo(message: types.Message, state: FSMContext, session
         # Forbidden use of tg_ usernames as promos
         is_valid = False
     elif not is_valid:
-        # Check Remnawave API for existing username
-        from bot.services.remnawave import api
-        try:
-            users_resp = await api.get_users(search=promo_code)
-            candidates = []
-            if isinstance(users_resp, list):
-                candidates = users_resp
-            elif isinstance(users_resp, dict):
-                candidates = users_resp.get('users') or users_resp.get('data') or users_resp.get('items') or (users_resp.get('response', {}).get('users') if isinstance(users_resp.get('response'), dict) else [])
-            
-            if isinstance(candidates, list):
-                for u in candidates:
-                    if u.get('username') == promo_code:
-                        is_valid = True
-                        break
-        except Exception as e:
-            logger.error("promo_username_check_failed", error=str(e))
+        # Check if username format allowed as promo (not ending in -XX)
+        import re
+        if re.search(r"-\d{2}$", promo_code):
+             is_valid = False
+        else:
+             # Check Remnawave API for existing username
+             from bot.services.remnawave import api
+             try:
+                 users_resp = await api.get_users(search=promo_code)
+                 candidates = []
+                 if isinstance(users_resp, list):
+                     candidates = users_resp
+                 elif isinstance(users_resp, dict):
+                     candidates = users_resp.get('users') or users_resp.get('data') or users_resp.get('items') or (users_resp.get('response', {}).get('users') if isinstance(users_resp.get('response'), dict) else [])
+                 
+                 if isinstance(candidates, list):
+                     for u in candidates:
+                         if u.get('username') == promo_code:
+                             is_valid = True
+                             break
+             except Exception as e:
+                 logger.error("promo_username_check_failed", error=str(e))
 
     if is_valid:
         await state.clear()
