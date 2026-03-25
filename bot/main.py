@@ -22,7 +22,11 @@ async def main():
     setup_logging()
     await init_db()
     
-    bot = Bot(token=config.bot_token.get_secret_value())
+    from aiogram.client.default import DefaultBotProperties
+    bot = Bot(
+        token=config.bot_token.get_secret_value(),
+        default=DefaultBotProperties(parse_mode="HTML")
+    )
     dp = Dispatcher()
     
     # Register middlewares

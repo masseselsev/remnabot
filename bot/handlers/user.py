@@ -359,7 +359,8 @@ async def show_active_trial_info(messageable, data, uuid, l10n: FluentLocalizati
         f"{msg_traffic}\n"
         f"{msg_expires}\n\n"
         f"{msg_link}\n<code>{link}</code>",
-        disable_web_page_preview=True
+        disable_web_page_preview=True,
+        parse_mode="HTML"
     )
 
 async def generate_profile_content(user_id, session, l10n):
@@ -1098,7 +1099,8 @@ async def execute_trial_creation(messageable, session, l10n: FluentLocalization,
             f"{msg_traffic}\n"
             f"{msg_expires}\n\n"
             f"{msg_link}\n<code>{link}</code>",
-            disable_web_page_preview=True
+            disable_web_page_preview=True,
+            parse_mode="HTML"
         )
     else:
         await messageable.answer(l10n.format_value("trial-failed-msg"))
