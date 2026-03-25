@@ -1052,8 +1052,8 @@ async def process_trial_promo(message: types.Message, state: FSMContext, session
 
     if is_valid:
         await state.clear()
-        tg_username = f"@{message.from_user.username}" if message.from_user.username else "no_username"
-        note = f"User: {tg_username} ({message.from_user.id}), Promo: {promo_code}"
+        tg_username = f"@{message.from_user.username}" if message.from_user.username else f"User_{message.from_user.id}"
+        note = f"User: {tg_username}, Promo: {promo_code}"
         await execute_trial_creation(message, session, l10n, user, note=note)
     else:
         await message.answer(l10n.format_value("trial-promo-invalid"))
