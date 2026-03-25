@@ -146,12 +146,16 @@ class RemnawaveAPI:
         
         return await self.update_user(uuid, {"dataLimit": new_limit, "trafficLimitStrategy": "NO_RESET"})
 
-    async def add_user_to_squad(self, user_uuid: str, squad_uuid: str):
-        # Using PATCH /api/users to update activeInternalSquads as per user suggestion
-        # This replaces the faulty bulk-actions endpoint
-        logger.info("adding_user_to_squad_via_patch", user_uuid=user_uuid, squad_uuid=squad_uuid)
+    async def add_user_to_squad(self, user_uuid: str, squad_uuid: str | list[str]):
+        # Now supports multiple UUIDs (comma-separated or list)
+        if isinstance(squad_uuid, str):
+            squad_list = [s.strip() for s in squad_uuid.split(",") if s.strip()]
+        else:
+            squad_list = squad_uuid
+
+        logger.info("adding_user_to_squads_via_patch", user_uuid=user_uuid, squad_uuids=squad_list)
         return await self.update_user(user_uuid, {
-            "activeInternalSquads": [squad_uuid]
+            "activeInternalSquads": squad_list
         })
 
     async def get_user_devices(self, user_uuid: str):

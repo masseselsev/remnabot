@@ -56,6 +56,27 @@ class AdminStates(StatesGroup):
     promo_code = State()
     promo_uses = State()
 
+async def resolve_squads_display(squad_uuid_str: str) -> str:
+    if not squad_uuid_str or squad_uuid_str in ["0", "None"]:
+        return "N/A"
+    
+    from bot.services.remnawave import api
+    uuids = [s.strip() for s in squad_uuid_str.split(",") if s.strip()]
+    if not uuids:
+        return "N/A"
+        
+    names = []
+    for uid in uuids:
+        try:
+            data = await api.get_squad(uid)
+            s = data.get('response', data)
+            name = s.get('slug') or s.get('name') or uid[:8]
+            names.append(f"{name} ({uid[:8]}...)")
+        except:
+            names.append(f"??? ({uid[:8]}...)")
+    
+    return ", ".join(names)
+
 async def get_main_kb(l10n: FluentLocalization):
     return types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-tariffs"), callback_data="admin_tariffs_list")],
@@ -416,16 +437,7 @@ async def trial_settings_menu(callback: types.CallbackQuery, state: FSMContext, 
     
     # Resolve Squad Name
     squad_val = settings['squad_uuid']
-    squad_display = squad_val
-    if squad_val and squad_val != "0" and squad_val != "None":
-        try:
-             squad_data = await api.get_squad(squad_val)
-             s = squad_data.get('response', squad_data)
-             
-             name = s.get('slug') or s.get('name') or "Unnamed"
-             squad_display = f"{name} ({squad_val})"
-        except Exception:
-             pass
+    squad_display = await resolve_squads_display(squad_val)
 
     text = f"{l10n.format_value('admin-trial-title')}\n\n" + \
            l10n.format_value("admin-trial-info", {
@@ -606,16 +618,7 @@ async def cp_view(callback: types.CallbackQuery, state: FSMContext, session, l10
     dur_display = "∞" if tariff.duration_months == 0 else f"{tariff.duration_months} {l10n.format_value('admin-month-short')}"
 
     # Resolve Squad Name
-    squad_display = tariff.squad_uuid or "N/A"
-    if tariff.squad_uuid and tariff.squad_uuid != "0":
-        try:
-             squad_data = await api.get_squad(tariff.squad_uuid)
-             s = squad_data.get('response', squad_data)
-             
-             name = s.get('slug') or s.get('name') or "Unnamed"
-             squad_display = f"{name} ({tariff.squad_uuid})"
-        except Exception:
-             pass
+    squad_display = await resolve_squads_display(tariff.squad_uuid)
 
     text = (
         f"{l10n.format_value('admin-cp-view-title', {'name': tariff.name})}\n\n"
@@ -907,17 +910,7 @@ async def t_view(callback: types.CallbackQuery, state: FSMContext, session, l10n
         return
     
     # Resolve Squad Name
-    squad_display = t.squad_uuid or "Default"
-    if t.squad_uuid and t.squad_uuid != "0":
-        try:
-             squad_data = await api.get_squad(t.squad_uuid)
-             # Handle response wrapper if present
-             s = squad_data.get('response', squad_data)
-             
-             name = s.get('slug') or s.get('name') or "Unnamed"
-             squad_display = f"{name} ({t.squad_uuid})"
-        except Exception:
-             pass
+    squad_display = await resolve_squads_display(t.squad_uuid)
         
     text = (
         f"{l10n.format_value('admin-t-view-title', {'name': t.name})}\n"
