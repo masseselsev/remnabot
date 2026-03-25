@@ -123,8 +123,9 @@ async def check_existing_accounts(user_id: int):
         logger.error("check_accounts_error", error=str(e), user_id=user_id)
         return None, []
 
-@router.message(CommandStart())
+@router.message(CommandStart(), state="*")
 async def cmd_start(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    await state.clear()
 
     # Create or update user
     stmt = select(models.User).where(models.User.id == message.from_user.id)
@@ -304,8 +305,18 @@ async def process_trial(message: types.Message, state: FSMContext, session, l10n
                 logger.error("show_trial_info_failed", error=str(e))
 
     # 2. No active trial found on remote -> Proceed to promo request
-    await message.answer(l10n.format_value("trial-promo-request"))
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="cancel_trial_promo")]
+    ])
+    await message.answer(l10n.format_value("trial-promo-request"), reply_markup=kb)
     await state.set_state(UserStates.trial_promo)
+
+@router.callback_query(F.data == "cancel_trial_promo")
+async def cancel_trial_promo(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    await state.clear()
+    await callback.message.delete()
+    await callback.message.answer(l10n.format_value("trial-promo-cancelled"))
+    await callback.answer()
 
 async def show_active_trial_info(messageable, data, uuid, l10n: FluentLocalization):
     from bot.config import config
@@ -941,6 +952,12 @@ async def request_new_trial_explicit(callback: types.CallbackQuery, state: FSMCo
 
 @router.message(UserStates.trial_promo)
 async def process_trial_promo(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    if message.text and message.text.startswith("/"):
+        # Let command handlers handle it if they have state="*" or priority
+        # But since aiogram state handlers have priority, we must clear state and return
+        await state.clear()
+        return
+
     promo_code = message.text.strip()
     user = await session.get(models.User, message.from_user.id)
     

@@ -54,6 +54,7 @@ trial-hours = { $count } Hours
 trial-less-day = Less than 1 Day
 trial-promo-request = 🎟 Please enter a promo code to activate your 3-day free trial:
 trial-promo-invalid = ❌ Invalid or used promo code.
+trial-promo-cancelled = ❌ Promo code entry cancelled.
 
 account-found-manual = 
     🔍 **Found existing account:**

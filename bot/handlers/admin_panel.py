@@ -69,7 +69,7 @@ async def get_main_kb(l10n: FluentLocalization):
 
 # ... cmd_admin ...
 
-@router.message(Command("admin"))
+@router.message(Command("admin"), state="*")
 async def cmd_admin(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     if message.from_user.id not in config.admin_ids:
         return

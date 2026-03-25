@@ -32,10 +32,10 @@ async def main():
     
     # Register routers (handlers)
     dp.include_router(support.router)
+    dp.include_router(admin_panel.router) # Prioritize admin commands
     dp.include_router(user.router)
     dp.include_router(shop.router)
     # dp.include_router(admin.router) # Deprecated
-    dp.include_router(admin_panel.router)
     dp.include_router(fallback.router)
 
     if config.webhook_url:
