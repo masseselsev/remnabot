@@ -19,7 +19,7 @@ async def create_order(user_id: int, tariff_id: int, amount: float, provider: st
     await session.commit()
     return order
 
-async def fulfill_order(order_id: int, session, payment_id: str = None) -> bool:
+async def fulfill_order(order_id: int, session, payment_id: str = None, note: str = None) -> bool:
     order = await session.get(models.Order, order_id)
     if not order or order.status == models.OrderStatus.PAID:
         return False
@@ -128,6 +128,8 @@ async def fulfill_order(order_id: int, session, payment_id: str = None) -> bool:
         updates = {
             "onHold": False
         }
+        if note:
+             updates["description"] = note
 
         # Tags
         if tariff.is_trial:

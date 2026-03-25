@@ -1022,19 +1022,43 @@ async def process_trial_promo(message: types.Message, state: FSMContext, session
         if promo:
             if promo.max_uses == 0 or promo.used_count < promo.max_uses:
                 # Check expiry if exists
-                if promo.active_until and promo.active_until < datetime.utcnow():
+                if promo.active_until and promo.active_until < datetime.now(timezone.utc):
                     is_valid = False
                 else:
                     is_valid = True
                     promo.used_count += 1
+
+    if promo_code.startswith("tg_") and not is_valid:
+        # Forbidden use of tg_ usernames as promos
+        is_valid = False
+    elif not is_valid:
+        # Check Remnawave API for existing username
+        from bot.services.remnawave import api
+        try:
+            users_resp = await api.get_users(search=promo_code)
+            candidates = []
+            if isinstance(users_resp, list):
+                candidates = users_resp
+            elif isinstance(users_resp, dict):
+                candidates = users_resp.get('users') or users_resp.get('data') or users_resp.get('items') or (users_resp.get('response', {}).get('users') if isinstance(users_resp.get('response'), dict) else [])
             
+            if isinstance(candidates, list):
+                for u in candidates:
+                    if u.get('username') == promo_code:
+                        is_valid = True
+                        break
+        except Exception as e:
+            logger.error("promo_username_check_failed", error=str(e))
+
     if is_valid:
         await state.clear()
-        await execute_trial_creation(message, session, l10n, user)
+        tg_username = f"@{message.from_user.username}" if message.from_user.username else "no_username"
+        note = f"User: {tg_username} ({message.from_user.id}), Promo: {promo_code}"
+        await execute_trial_creation(message, session, l10n, user, note=note)
     else:
         await message.answer(l10n.format_value("trial-promo-invalid"))
 
-async def execute_trial_creation(messageable, session, l10n: FluentLocalization, user: models.User):
+async def execute_trial_creation(messageable, session, l10n: FluentLocalization, user: models.User, note: str = None):
     import structlog
     from bot.services.remnawave import api
     from bot.config import config
@@ -1067,7 +1091,7 @@ async def execute_trial_creation(messageable, session, l10n: FluentLocalization,
     from bot.services.orders import create_order, fulfill_order
     order = await create_order(user.id, tariff.id, 0.0, models.PaymentProvider.MANUAL, session)
     
-    success = await fulfill_order(order.id, session)
+    success = await fulfill_order(order.id, session, note=note)
     if success:
         # Get connection info (Subscription URL)
         # Fetch fresh user data to get the correct subscription link
