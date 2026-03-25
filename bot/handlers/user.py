@@ -1,5 +1,5 @@
 from aiogram import Router, types, F
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, StateFilter
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from bot.database.core import get_session
@@ -123,7 +123,7 @@ async def check_existing_accounts(user_id: int):
         logger.error("check_accounts_error", error=str(e), user_id=user_id)
         return None, []
 
-@router.message(CommandStart(), state="*")
+@router.message(CommandStart(), StateFilter("*"))
 async def cmd_start(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
     await state.clear()
 

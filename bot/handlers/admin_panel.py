@@ -1,5 +1,5 @@
 from aiogram import Router, types, F
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from fluent.runtime import FluentLocalization
@@ -69,7 +69,7 @@ async def get_main_kb(l10n: FluentLocalization):
 
 # ... cmd_admin ...
 
-@router.message(Command("admin"), state="*")
+@router.message(Command("admin"), StateFilter("*"))
 async def cmd_admin(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     if message.from_user.id not in config.admin_ids:
         return
