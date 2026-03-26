@@ -82,15 +82,9 @@ trial-instruction-steps =
     • Copy your <code>happ://...</code> link from above.
     • Open <b>Happ</b> app.
     • Tap the <b>"+"</b> button.
-    • Paste from clipboard.
-
-trial-instruction-promo-subtitle = 🔸 <b>Step 3 (Promo Code Activation)</b>
-trial-instruction-promo-steps = 
-    • Press 🎁 <b>3 days free!</b> in the main menu.
-    • Enter your promo code.
     • If the code is valid, your subscription will appear in your profile.
     
-    <i>Where to get a code? You can use names (username) of existing first-level users (not tg_xxxxxxxxx) if you know them!
+    <i>Where to get a promo code? You can use names (username) of existing first-level users (not tg_xxxxxxxxx) if you know them!
     Attention: after your registration using such a promo code, the user whose username was used will receive a notification of your registration.</i>
 
 referral-notification-msg = 
@@ -102,8 +96,13 @@ referral-notification-msg =
 admin-referral-notification-msg = 
     📢 <b>Registration via recommendation</b>
     
-    User: <b>{ $full_name }</b> (@{ $username }, ID: <code>{ $tg_id }</code>)
-    Recommended by: <b>@{ $referrer_username }</b>
+    🆕 User: <b>{ $full_name }</b> (@{ $username }, ID: <code>{ $tg_id }</code>)
+    👥 Recommended by: <b>@{ $referrer_username }</b>
+    
+    ℹ️ <i>{ $delivery_status }</i>
+
+individual-notification-sent = Individual notification sent.
+individual-notification-failed = Individual notification NOT sent (user hasn't started bot or blocked it).
 
 disclaimer-not-accepted-msg = 
     ⚠️ <b>Terms of use must be accepted to receive a trial period.</b>

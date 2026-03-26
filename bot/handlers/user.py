@@ -1102,15 +1102,22 @@ async def process_trial_promo(message: types.Message, state: FSMContext, session
         await message.answer(l10n.format_value("trial-promo-invalid"))
 
 async def send_referral_notification(bot, session, l10n, new_user: types.User, referrer_rw: dict):
-    from bot.config import config
+    from sqlalchemy import or_, and_
     
-    # Try find referral in DB
-    ref_uuid = referrer_rw.get('uuid')
-    stmt = select(models.User).where(models.User.remnawave_uuid == ref_uuid)
+    # Try find referral in DB (vibrant lookup: UUID or username)
+    ref_uuid = referrer_rw.get('uuid') or referrer_rw.get('id')
+    ref_uname = referrer_rw.get('username')
+    
+    stmt = select(models.User).where(
+        or_(
+            models.User.remnawave_uuid == ref_uuid,
+            and_(models.User.username.ilike(ref_uname), models.User.username != None) if ref_uname else False
+        )
+    )
     result = await session.execute(stmt)
     ref_user = result.scalar_one_or_none()
     
-    success = False
+    individual_sent = False
     if ref_user:
         try:
             notification = l10n.format_value("referral-notification-msg", {
@@ -1119,27 +1126,28 @@ async def send_referral_notification(bot, session, l10n, new_user: types.User, r
                 "tg_id": str(new_user.id)
             })
             await bot.send_message(ref_user.id, notification, parse_mode="HTML")
-            success = True
+            individual_sent = True
         except Exception as e:
             logger.debug("failed_to_notify_referrer", user_id=ref_user.id, error=str(e))
     
-    if not success:
-        # Notify admin
-        try:
-            admin_msg = l10n.format_value("admin-referral-notification-msg", {
-                "full_name": new_user.full_name,
-                "username": new_user.username or "none",
-                "tg_id": str(new_user.id),
-                "referrer_username": referrer_rw.get('username') or "unknown"
-            })
-            await bot.send_message(config.admin_group_id, admin_msg, parse_mode="HTML")
-        except Exception as e:
-            logger.error("failed_to_notify_admin_referral", error=str(e))
+    # ALWAYS Notify admin
+    try:
+        delivery_status = l10n.format_value("individual-notification-sent" if individual_sent else "individual-notification-failed")
+        
+        admin_msg = l10n.format_value("admin-referral-notification-msg", {
+            "full_name": new_user.full_name,
+            "username": new_user.username or "none",
+            "tg_id": str(new_user.id),
+            "referrer_username": ref_uname or "unknown",
+            "delivery_status": delivery_status
+        })
+        await bot.send_message(config.admin_group_id, admin_msg, parse_mode="HTML")
+    except Exception as e:
+        logger.error("failed_to_notify_admin_referral", error=str(e))
 
 async def execute_trial_creation(messageable, session, l10n: FluentLocalization, user: models.User, note: str = None):
     import structlog
     from bot.services.remnawave import api
-    from bot.config import config
     
     # Find trial tariff
     stmt = select(models.Tariff).where(models.Tariff.is_trial == True, models.Tariff.is_active == True)
