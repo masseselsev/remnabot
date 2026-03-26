@@ -79,7 +79,7 @@ trial-instruction-apps =
 
 trial-instruction-steps = 
     2️⃣ <b>Add a subscription to it:</b>
-    • Copy your <code>happ://...</code> link from above.
+    • Copy your <code>happ://...</code> link.
     • Open <b>Happ</b> app.
     • Tap the <b>"+"</b> button.
     • If the code is valid, your subscription will appear in your profile.
