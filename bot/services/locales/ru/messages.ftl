@@ -78,7 +78,7 @@ trial-instruction-apps =
     • <a href="https://github.com/Happ-proxy">Другие платформы</a>
 
 trial-instruction-steps = 
-    2️⃣ <b>Как добавить подписку:</b>
+    2️⃣ <b>Добавьте в него подписку:</b>
     • Скопируйте вашу ссылку <code>happ://...</code> выше.
     • Откройте приложение <b>Happ</b>.
     • Нажмите на кнопку <b>"+"</b>.

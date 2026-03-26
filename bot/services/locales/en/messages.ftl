@@ -78,7 +78,7 @@ trial-instruction-apps =
     • <a href="https://github.com/Happ-proxy">Other platforms</a>
 
 trial-instruction-steps = 
-    2️⃣ <b>How to add subscription:</b>
+    2️⃣ <b>Add a subscription to it:</b>
     • Copy your <code>happ://...</code> link from above.
     • Open <b>Happ</b> app.
     • Tap the <b>"+"</b> button.
