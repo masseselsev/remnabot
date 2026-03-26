@@ -176,10 +176,12 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
     btn_trial = l10n.format_value("btn-trial")
     btn_support = l10n.format_value("btn-support")
     btn_instruction = l10n.format_value("btn-instruction")
+    btn_disclaimer = l10n.format_value("btn-disclaimer")
     
     kb = [
         [types.KeyboardButton(text=btn_profile), types.KeyboardButton(text=btn_trial)],
-        [types.KeyboardButton(text=btn_support), types.KeyboardButton(text=btn_instruction)]
+        [types.KeyboardButton(text=btn_support), types.KeyboardButton(text=btn_instruction)],
+        [types.KeyboardButton(text=btn_disclaimer)]
     ]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     
@@ -561,9 +563,16 @@ async def cmd_instruction_msg(message: types.Message, l10n: FluentLocalization):
         f"{l10n.format_value('trial-instruction-http-steps')}\n\n"
         f"{l10n.format_value('trial-instruction-happ-subtitle')}\n"
         f"{l10n.format_value('trial-instruction-apps')}\n"
-        f"{l10n.format_value('trial-instruction-steps')}"
+        f"{l10n.format_value('trial-instruction-steps')}\n\n"
+        f"{l10n.format_value('trial-instruction-promo-subtitle')}\n"
+        f"{l10n.format_value('trial-instruction-promo-steps')}"
     )
     await message.answer(instruction, disable_web_page_preview=True, parse_mode="HTML")
+ 
+@router.message(F.text == "⚖️ About Project")
+@router.message(F.text == "⚖️ О проекте")
+async def cmd_disclaimer(message: types.Message, l10n: FluentLocalization):
+    await message.answer(l10n.format_value("disclaimer-text"), parse_mode="HTML")
 
 
 @router.callback_query(F.data == "change_lang")
@@ -621,10 +630,12 @@ async def set_language(callback: types.CallbackQuery, session, l10n: FluentLocal
     btn_trial = new_l10n.format_value("btn-trial")
     btn_support = new_l10n.format_value("btn-support")
     btn_instruction = new_l10n.format_value("btn-instruction")
+    btn_disclaimer = new_l10n.format_value("btn-disclaimer")
 
     kb = [
         [types.KeyboardButton(text=btn_profile), types.KeyboardButton(text=btn_trial)],
-        [types.KeyboardButton(text=btn_support), types.KeyboardButton(text=btn_instruction)]
+        [types.KeyboardButton(text=btn_support), types.KeyboardButton(text=btn_instruction)],
+        [types.KeyboardButton(text=btn_disclaimer)]
     ]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     

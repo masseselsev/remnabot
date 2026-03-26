@@ -11,9 +11,10 @@ btn-profile = 👤 Profile
 btn-devices = 📱 My Devices
 btn-yes = ✅ Yes
 btn-no = ❌ No
-btn-trial = 🎁 3-day trial!
+btn-trial = 🎁 3 days free!
 btn-support = 🆘 Support
 btn-instruction = 📖 Instruction
+btn-disclaimer = ⚖️ About Project
 
 profile-title = 👤 Your Profile
 profile-id = 👤 Tg ID: { $id }
@@ -80,7 +81,24 @@ trial-instruction-steps =
     • Copy your <code>happ://...</code> link from above.
     • Open <b>Happ</b> app.
     • Tap the <b>"+"</b> button.
-    • Insert from clipboard.
+    • Paste from clipboard.
+
+trial-instruction-promo-subtitle = 🔸 <b>Step 3 (Promo Code Activation)</b>
+trial-instruction-promo-steps = 
+    • Press 🎁 <b>3 days free!</b> in the main menu.
+    • Enter your promo code.
+    • If the code is valid, your subscription will appear in your profile.
+    
+    <i>Where to get a code? You can use names of existing users (except system ones) if you know them!</i>
+
+disclaimer-text = 
+    ⚖️ <b>About Project</b>
+    
+    This project is strictly non-commercial. All proceeds from subscriptions go entirely towards server costs and technical infrastructure maintenance.
+    
+    The service is provided on an "as is" basis. We are not responsible for any blocking by government regulators and do not guarantee refunds in case of force majeure circumstances that prevent network operation.
+    
+    Thank you for supporting the development of a free internet!
 
 account-found-manual = 
     🔍 **Found existing account:**
