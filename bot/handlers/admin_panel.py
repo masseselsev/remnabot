@@ -137,7 +137,8 @@ async def admin_welcome_edit_start(callback: types.CallbackQuery, state: FSMCont
     await state.update_data(edit_welcome_lang=lang)
     
     current_key = f"welcome_msg_{lang}"
-    current_val = await SettingsService.get_setting(current_key, "Welcome, {$name}!") # Default if not set
+    default_welcome = "Привет, {$name}! 🪿" if lang == "ru" else "Welcome, {$name}! 🪿"
+    current_val = await SettingsService.get_setting(current_key, default_welcome)
     
     await state.set_state(AdminStates.welcome_input_text)
     await callback.message.edit_text(

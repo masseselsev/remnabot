@@ -169,7 +169,7 @@ error-profile-load = Ошибка загрузки профиля
 lang-selector-title = Выберите язык:
 lang-ru = 🇷🇺 Русский
 lang-en = 🇺🇸 English
-lang-changed-msg = ✅ Язык изменен на Русский.\nМеню обновлено.
+lang-changed-msg = ✅ Язык успешно изменен на русский.\nМеню пользователя обновлено.
 
 admin-btn-search-user = 🔍 Найти пользователя по TgID
 admin-btn-promos = 🎟 Промокоды
@@ -245,7 +245,12 @@ admin-welcome-title = 📝 **Настройка приветствия**
     Выберите язык для редактирования:
 admin-welcome-ru = 🇷🇺 Русский
 admin-welcome-en = 🇺🇸 English
-admin-welcome-ask = Введите текст приветствия (поддерживается HTML).\nИспользуйте `{"{"}$name{"}"}` для имени пользователя.\nТекущий текст:\n\n`{ $current }`
+admin-welcome-ask = 
+    Введите текст приветствия (поддерживается HTML).
+    Используйте <code>{$name}</code> для имени пользователя.
+    
+    Текущий текст:
+    <code>{ $current }</code>
 admin-welcome-success = ✅ Сообщение сохранено!
 
 # Trial Settings
