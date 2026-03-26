@@ -118,6 +118,8 @@ disclaimer-text =
     
     The service is provided on an "as is" basis. We are not responsible for any blocking by government regulators and do not guarantee refunds in case of force majeure circumstances that prevent network operation.
     
+    To use the VPN, press the "3 days free!" button. If you then want to support the project financially (from 2000 RUB) and receive a bonus of 2TB (2048 Gigabytes) of traffic monthly for a year, go to the support channel ("Support" button) and notify <b>the channel's private messages</b> about your desire. We'll set everything up perfectly! 😊
+    
     <i>WARNING: If the server description indicates, for example, CONSUMPTION x10, it means that traffic consumption there is calculated in tenfold volume. 
     That is: if you download 2GB, the system will count them as 20GB, and 100MB will turn into 1GB. This is due to the peculiarities of traffic billing by the hosting provider of the specified server.</i>
     
