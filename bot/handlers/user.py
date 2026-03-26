@@ -569,9 +569,7 @@ async def cmd_instruction_msg(message: types.Message, l10n: FluentLocalization):
         f"{l10n.format_value('trial-instruction-http-steps')}\n\n"
         f"{l10n.format_value('trial-instruction-happ-subtitle')}\n"
         f"{l10n.format_value('trial-instruction-apps')}\n"
-        f"{l10n.format_value('trial-instruction-steps')}\n\n"
-        f"{l10n.format_value('trial-instruction-promo-subtitle')}\n"
-        f"{l10n.format_value('trial-instruction-promo-steps')}"
+        f"{l10n.format_value('trial-instruction-steps')}"
     )
     await message.answer(instruction, disable_web_page_preview=True, parse_mode="HTML")
  
