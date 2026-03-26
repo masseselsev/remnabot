@@ -256,12 +256,12 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
     await message.answer(full_text, reply_markup=keyboard, parse_mode="HTML", disable_web_page_preview=True)
 
 
-@router.message(F.text == "🎁 3 дня бесплатно!")
-@router.message(F.text == "🎁 3-day trial!")
-@router.message(F.text == "🎁 3 days free!")
-@router.message(F.text == "🎁 Try for free")
-@router.message(F.text == "🎁 Попробовать бесплатно")
+@router.message(F.text.in_([
+    "🎁 3 дня бесплатно!", "🎁 3-day trial!", "🎁 3 days free!", 
+    "🎁 Try for free", "🎁 Попробовать бесплатно"
+]), StateFilter("*"))
 async def process_trial(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    await state.clear()
     user = await session.get(models.User, message.from_user.id)
     
     if not user or not user.disclaimer_accepted:
@@ -552,16 +552,16 @@ async def generate_profile_content(user_id, session, l10n):
     
     return text, kb
 
-@router.message(F.text == "👤 Profile")
-@router.message(F.text == "👤 Профиль")
-async def process_profile(message: types.Message, session, l10n: FluentLocalization):
+@router.message(F.text.in_(["👤 Профиль", "👤 Profile"]), StateFilter("*"))
+async def process_profile(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    await state.clear()
     text, kb = await generate_profile_content(message.from_user.id, session, l10n)
     if text:
         await message.answer(text, reply_markup=kb, parse_mode="HTML", disable_web_page_preview=True)
 
-@router.message(F.text == "📖 Instruction")
-@router.message(F.text == "📖 Инструкция")
-async def cmd_instruction_msg(message: types.Message, l10n: FluentLocalization):
+@router.message(F.text.in_(["📖 Инструкция", "📖 Instruction"]), StateFilter("*"))
+async def cmd_instruction_msg(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+    await state.clear()
     instruction = (
         f"{l10n.format_value('trial-instruction-title')}\n"
         f"{l10n.format_value('trial-instruction-profile-hint')}\n\n"
@@ -573,9 +573,9 @@ async def cmd_instruction_msg(message: types.Message, l10n: FluentLocalization):
     )
     await message.answer(instruction, disable_web_page_preview=True, parse_mode="HTML")
  
-@router.message(F.text == "⚖️ About Project")
-@router.message(F.text == "⚖️ О проекте")
-async def cmd_disclaimer(message: types.Message, session, l10n: FluentLocalization):
+@router.message(F.text.in_(["⚖️ О проекте", "⚖️ About Project"]), StateFilter("*"))
+async def cmd_disclaimer(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    await state.clear()
     user = await session.get(models.User, message.from_user.id)
     kb = None
     if user and not user.disclaimer_accepted:
