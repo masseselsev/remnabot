@@ -118,6 +118,9 @@ disclaimer-text =
     
     The service is provided on an "as is" basis. We are not responsible for any blocking by government regulators and do not guarantee refunds in case of force majeure circumstances that prevent network operation.
     
+    <i>WARNING: If the server description indicates, for example, CONSUMPTION x10, it means that traffic consumption there is calculated in tenfold volume. 
+    That is: if you download 2GB, the system will count them as 20GB, and 100MB will turn into 1GB. This is due to the peculiarities of traffic billing by the hosting provider of the specified server.</i>
+    
     Thank you for supporting the development of a free internet!
 
 account-found-manual = 
