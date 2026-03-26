@@ -168,7 +168,9 @@ error-context-lost = ❌ Account context lost.
 lang-selector-title = Select language:
 lang-ru = 🇷🇺 Русский
 lang-en = 🇺🇸 English
-lang-changed-msg = ✅ Language changed to English.\nMenu updated.
+lang-changed-msg = 
+    ✅ Language successfully changed to English.
+    User menu updated.
 
 admin-btn-search-user = 🔍 Find user by TgID
 admin-btn-promos = 🎟 Promo Codes
@@ -244,7 +246,12 @@ admin-welcome-title = 📝 **Welcome Message Settings**
     Select a language to edit:
 admin-welcome-ru = 🇷🇺 Russian
 admin-welcome-en = 🇺🇸 English
-admin-welcome-ask = Enter welcome text (HTML supported).\nUse `{"{"}$name{"}"}` for username.\nCurrent text:\n\n`{ $current }`
+admin-welcome-ask = 
+    Enter welcome text (HTML supported).
+    Use <code>{$name}</code> for username.
+    
+    Current text:
+    <code>{ $current }</code>
 admin-welcome-success = ✅ Message saved!
 
 # Trial Settings

@@ -171,7 +171,9 @@ error-profile-load = Ошибка загрузки профиля
 lang-selector-title = Выберите язык:
 lang-ru = 🇷🇺 Русский
 lang-en = 🇺🇸 English
-lang-changed-msg = ✅ Язык успешно изменен на русский.\nМеню пользователя обновлено.
+lang-changed-msg = 
+    ✅ Язык успешно изменен на русский.
+    Меню пользователя обновлено.
 
 admin-btn-search-user = 🔍 Найти пользователя по TgID
 admin-btn-promos = 🎟 Промокоды
