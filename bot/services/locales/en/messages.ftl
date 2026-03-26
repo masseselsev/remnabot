@@ -90,7 +90,20 @@ trial-instruction-promo-steps =
     • Enter your promo code.
     • If the code is valid, your subscription will appear in your profile.
     
-    <i>Where to get a code? You can use names of existing users (except system ones) if you know them!</i>
+    <i>Where to get a code? You can use names (username) of existing first-level users (not tg_xxxxxxxxx) if you know them!
+    Attention: after your registration using such a promo code, the user whose username was used will receive a notification of your registration.</i>
+
+referral-notification-msg = 
+    🔔 <b>You have a new referral!</b>
+    
+    A new user registered by your recommendation:
+    👤 <b>{ $full_name }</b> (@{ $username }, ID: <code>{ $tg_id }</code>)
+
+admin-referral-notification-msg = 
+    📢 <b>Registration via recommendation</b>
+    
+    User: <b>{ $full_name }</b> (@{ $username }, ID: <code>{ $tg_id }</code>)
+    Recommended by: <b>@{ $referrer_username }</b>
 
 disclaimer-not-accepted-msg = 
     ⚠️ <b>Terms of use must be accepted to receive a trial period.</b>

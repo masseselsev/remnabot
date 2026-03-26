@@ -1039,6 +1039,7 @@ async def process_trial_promo(message: types.Message, state: FSMContext, session
     user = await session.get(models.User, message.from_user.id)
     
     is_valid = False
+    referrer_rw_user = None
     
     # Built-in: Current date (GMT+3)
     now_gmt3 = datetime.now(timezone.utc) + timedelta(hours=3)
@@ -1083,8 +1084,9 @@ async def process_trial_promo(message: types.Message, state: FSMContext, session
                  if isinstance(candidates, list):
                      for u in candidates:
                          if u.get('username') == promo_code:
-                             is_valid = True
-                             break
+                            is_valid = True
+                            referrer_rw_user = u
+                            break
              except Exception as e:
                  logger.error("promo_username_check_failed", error=str(e))
 
@@ -1093,8 +1095,46 @@ async def process_trial_promo(message: types.Message, state: FSMContext, session
         tg_username = f"@{message.from_user.username}" if message.from_user.username else message.from_user.full_name
         note = f"User: {tg_username}, Promo: {promo_code}"
         await execute_trial_creation(message, session, l10n, user, note=note)
+        
+        if referrer_rw_user:
+            await send_referral_notification(message.bot, session, l10n, message.from_user, referrer_rw_user)
     else:
         await message.answer(l10n.format_value("trial-promo-invalid"))
+
+async def send_referral_notification(bot, session, l10n, new_user: types.User, referrer_rw: dict):
+    from bot.config import config
+    
+    # Try find referral in DB
+    ref_uuid = referrer_rw.get('uuid')
+    stmt = select(models.User).where(models.User.remnawave_uuid == ref_uuid)
+    result = await session.execute(stmt)
+    ref_user = result.scalar_one_or_none()
+    
+    success = False
+    if ref_user:
+        try:
+            notification = l10n.format_value("referral-notification-msg", {
+                "full_name": new_user.full_name,
+                "username": new_user.username or "none",
+                "tg_id": str(new_user.id)
+            })
+            await bot.send_message(ref_user.id, notification, parse_mode="HTML")
+            success = True
+        except Exception as e:
+            logger.debug("failed_to_notify_referrer", user_id=ref_user.id, error=str(e))
+    
+    if not success:
+        # Notify admin
+        try:
+            admin_msg = l10n.format_value("admin-referral-notification-msg", {
+                "full_name": new_user.full_name,
+                "username": new_user.username or "none",
+                "tg_id": str(new_user.id),
+                "referrer_username": referrer_rw.get('username') or "unknown"
+            })
+            await bot.send_message(config.admin_group_id, admin_msg, parse_mode="HTML")
+        except Exception as e:
+            logger.error("failed_to_notify_admin_referral", error=str(e))
 
 async def execute_trial_creation(messageable, session, l10n: FluentLocalization, user: models.User, note: str = None):
     import structlog
