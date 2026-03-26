@@ -1,5 +1,5 @@
 start-welcome = { $settings_msg }
-start-active-sub-title = ℹ️ <b>Активные подписки</b>:
+start-active-sub-title = ℹ️ <b>Активные подписки:</b>
 start-active-sub-item = 
     { $index }. 👤 <b>{ $username }</b>
     { $expiry }
@@ -11,7 +11,7 @@ btn-profile = 👤 Профиль
 btn-devices = 📱 Мои устройства
 btn-yes = ✅ Да
 btn-no = ❌ Нет
-btn-support = 🆘 Поддержка
+btn-support = 🆘 Поддержка (в т.ч. проекта)
 btn-instruction = 📖 Инструкция
 btn-disclaimer = ⚖️ О проекте
 btn-accept-disclaimer = ✅ Принять условия
@@ -100,6 +100,8 @@ admin-referral-notification-msg =
     👥 Рекомендация от: <b>@{ $referrer_username }</b>
     
     ℹ️ <i>{ $delivery_status }</i>
+
+start-active-sub-title = ℹ️ <b>Активные подписки:</b>
 
 individual-notification-sent = Индивидуальное уведомление отправлено.
 individual-notification-failed = Индивидуальное уведомление НЕ отправлено (пользователь не запустил бота или заблокировал его).

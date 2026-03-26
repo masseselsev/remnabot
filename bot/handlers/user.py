@@ -203,7 +203,7 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
         
         if unique_accs:
             sub_title = l10n.format_value('start-active-sub-title') or 'ℹ️ <b>Активные подписки:</b>'
-            sub_lines = [f"\n{sub_title}"]
+            sub_lines = [f"\n\n{sub_title}"]
             
             for idx, acc in enumerate(unique_accs, 1):
                 expire_at = acc.get('expireAt')
