@@ -666,27 +666,31 @@ async def set_language(callback: types.CallbackQuery, session, l10n: FluentLocal
 @router.callback_query(F.data == "my_devices")
 @router.callback_query(F.data.startswith("dev_acc_"))
 async def show_devices_list(callback: types.CallbackQuery, session, l10n: FluentLocalization):
-    user = await session.get(models.User, callback.from_user.id)
-    if not user.remnawave_uuid:
+    # 1. Fetch ALL accounts (Standard + Manual)
+    std_acc, manual_accs = await check_existing_accounts(callback.from_user.id)
+    all_accs_list = []
+    if std_acc: all_accs_list.append(std_acc)
+    all_accs_list.extend(manual_accs)
+    
+    # Deduplicate and Sort
+    unique_accs_map = {a['uuid']: a for a in all_accs_list}
+    all_accs = list(unique_accs_map.values())
+    all_accs.sort(key=lambda x: x.get('username', '').lower())
+
+    if not all_accs:
         await callback.answer(l10n.format_value("subscription-none"), show_alert=True)
         return
 
-    # 1. Determine target account UUID
+    # 2. Determine target account UUID
     target_uuid = None
     if callback.data.startswith("dev_acc_"):
         target_uuid = callback.data.split("_", 2)[2]
+        # Security check: Does user have access to this UUID?
+        if target_uuid not in unique_accs_map:
+             await callback.answer("Access denied", show_alert=True)
+             return
     else:
         # Initial entry: Check if we need selection menu
-        std_acc, manual_accs = await check_existing_accounts(user.id)
-        all_accs = []
-        if std_acc: all_accs.append(std_acc)
-        all_accs.extend(manual_accs)
-        
-        # Deduplicate by UUID just in case
-        unique_accs = {a['uuid']: a for a in all_accs}.values()
-        all_accs = list(unique_accs)
-        all_accs.sort(key=lambda x: x.get('username', '').lower())
-        
         if len(all_accs) > 1:
             # Show Selection Menu
             kb_rows = []
@@ -698,11 +702,9 @@ async def show_devices_list(callback: types.CallbackQuery, session, l10n: Fluent
             kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="back_profile")])
             await callback.message.edit_text(l10n.format_value("devices-select-account"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows))
             return
-        elif len(all_accs) == 1:
-            target_uuid = all_accs[0]['uuid']
         else:
-            # Fallback to current if something weird happens
-            target_uuid = user.remnawave_uuid
+            target_uuid = all_accs[0]['uuid']
+
 
     # 2. Show Devices for Target UUID
     from bot.services.remnawave import api
