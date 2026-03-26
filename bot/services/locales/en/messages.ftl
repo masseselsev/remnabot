@@ -15,6 +15,7 @@ btn-trial = 🎁 3 days free!
 btn-support = 🆘 Support
 btn-instruction = 📖 Instruction
 btn-disclaimer = ⚖️ About Project
+btn-accept-disclaimer = ✅ Accept Terms
 
 profile-title = 👤 Your Profile
 profile-id = 👤 Tg ID: { $id }
@@ -90,6 +91,13 @@ trial-instruction-promo-steps =
     • If the code is valid, your subscription will appear in your profile.
     
     <i>Where to get a code? You can use names of existing users (except system ones) if you know them!</i>
+
+disclaimer-not-accepted-msg = 
+    ⚠️ <b>Terms of use must be accepted to receive a trial period.</b>
+    
+    Please go to ⚖️ <b>About Project</b> section and press "Accept Terms".
+
+disclaimer-accepted-msg = ✅ Thank you! Terms of use accepted. You can now activate your trial period.
 
 disclaimer-text = 
     ⚖️ <b>About Project</b>

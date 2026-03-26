@@ -258,12 +258,18 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
 
 @router.message(F.text == "🎁 3 дня бесплатно!")
 @router.message(F.text == "🎁 3-day trial!")
+@router.message(F.text == "🎁 3 days free!")
 @router.message(F.text == "🎁 Try for free")
 @router.message(F.text == "🎁 Попробовать бесплатно")
 async def process_trial(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    user = await session.get(models.User, message.from_user.id)
+    
+    if not user or not user.disclaimer_accepted:
+        await message.answer(l10n.format_value("disclaimer-not-accepted-msg"), parse_mode="HTML")
+        return
+    
     from bot.services.remnawave import api
     from bot.config import config
-    user = await session.get(models.User, message.from_user.id)
     
     # 1. Check if user already has a trial via API (Source of Truth)
     rw_user = None
@@ -571,8 +577,24 @@ async def cmd_instruction_msg(message: types.Message, l10n: FluentLocalization):
  
 @router.message(F.text == "⚖️ About Project")
 @router.message(F.text == "⚖️ О проекте")
-async def cmd_disclaimer(message: types.Message, l10n: FluentLocalization):
-    await message.answer(l10n.format_value("disclaimer-text"), parse_mode="HTML")
+async def cmd_disclaimer(message: types.Message, session, l10n: FluentLocalization):
+    user = await session.get(models.User, message.from_user.id)
+    kb = None
+    if user and not user.disclaimer_accepted:
+        kb = types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text=l10n.format_value("btn-accept-disclaimer"), callback_data="accept_disclaimer")]
+        ])
+    await message.answer(l10n.format_value("disclaimer-text"), reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data == "accept_disclaimer")
+async def process_accept_disclaimer(callback: types.CallbackQuery, session, l10n: FluentLocalization):
+    user = await session.get(models.User, callback.from_user.id)
+    if user:
+        user.disclaimer_accepted = True
+        await session.commit()
+    
+    await callback.message.edit_text(l10n.format_value("disclaimer-accepted-msg"), parse_mode="HTML")
+    await callback.answer()
 
 
 @router.callback_query(F.data == "change_lang")

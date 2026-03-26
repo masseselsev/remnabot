@@ -31,6 +31,7 @@ class User(Base):
     
     # balance field removed
     is_trial_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    disclaimer_accepted: Mapped[bool] = mapped_column(Boolean, default=False)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
