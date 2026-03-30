@@ -125,6 +125,52 @@ async def check_existing_accounts(user_id: int):
         logger.error("check_accounts_error", error=str(e), user_id=user_id)
         return None, []
 
+
+def extract_users_list(resp) -> list:
+    """Extracts a list of users from various Remnawave API response formats."""
+    if isinstance(resp, list):
+        return resp
+    if isinstance(resp, dict):
+        for key in ['users', 'data', 'items']:
+            if key in resp and isinstance(resp[key], list):
+                return resp[key]
+        if isinstance(resp.get('response'), dict):
+            users = resp['response'].get('users')
+            if isinstance(users, list):
+                return users
+    return []
+
+
+async def get_level1_username(tg_id: int) -> str | None:
+    """
+    Returns the first level-1 username associated with this tg_id.
+
+    Level-1 usernames are those that:
+      - Do NOT start with 'tg_'
+      - Do NOT end with a -XX suffix (e.g. -01, -02)
+
+    All matching account usernames are sorted alphabetically;
+    the first one is returned (or None if no level-1 accounts found).
+    """
+    import re
+    std_acc, manual_accs = await check_existing_accounts(tg_id)
+    all_accs = []
+    if std_acc:
+        all_accs.append(std_acc)
+    all_accs.extend(manual_accs)
+
+    level1_names = []
+    for acc in all_accs:
+        uname = acc.get('username', '')
+        if uname and not uname.startswith('tg_') and not re.search(r'-\d{2}$', uname):
+            level1_names.append(uname)
+
+    if not level1_names:
+        return None
+
+    level1_names.sort()
+    return level1_names[0]
+
 @router.message(CommandStart(), StateFilter("*"))
 async def cmd_start(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
     await state.clear()
@@ -280,58 +326,39 @@ async def process_trial(message: types.Message, state: FSMContext, session, l10n
 
 @router.callback_query(F.data == "trial_for_self")
 async def trial_for_self_cb(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
-    """Flow: user creates trial for themselves. Checks they are level-1."""
+    """Flow: user creates trial for themselves."""
+    user = await session.get(models.User, callback.from_user.id)
     from bot.services.remnawave import api
 
-    user = await session.get(models.User, callback.from_user.id)
-
-    # --- Level check: user must NOT be a tg_xxx (level-2) user ---
-    # Check by remnawave username: if it starts with 'tg_', this is a level-2 account
-    is_level2 = False
+    # Check if user already has a trial
     rw_user = None
     if user and user.remnawave_uuid:
         try:
             rw_user = await api.get_user(user.remnawave_uuid)
-            uname = (rw_user or {}).get('username', '')
-            if uname.startswith('tg_'):
-                is_level2 = True
         except: pass
 
-    # Also search by tg_id pattern if not found via uuid
+    # Also search by tg_id username
     if not rw_user:
         try:
             search_name = f"tg_{callback.from_user.id}"
-            candidates_resp = await api.get_users(search=search_name)
-            candidates = []
-            if isinstance(candidates_resp, list): candidates = candidates_resp
-            elif isinstance(candidates_resp, dict):
-                for key in ['users', 'data', 'items']:
-                    if key in candidates_resp and isinstance(candidates_resp[key], list):
-                        candidates = candidates_resp[key]; break
-                if not candidates and isinstance(candidates_resp.get('response'), dict):
-                    candidates = candidates_resp['response'].get('users', [])
-            for u in candidates:
+            cands_resp = await api.get_users(search=search_name)
+            cands = extract_users_list(cands_resp)
+            for u in cands:
                 if u.get('username') == search_name:
                     rw_user = u
-                    is_level2 = True  # found tg_xxx account
+                    if user:
+                        user.remnawave_uuid = u.get('uuid') or u.get('id')
+                        await session.commit()
                     break
         except: pass
 
-    if is_level2:
+    if rw_user and 'TRIAL_YES' in (rw_user.get('tag') or ''):
         await callback.answer()
-        await callback.message.edit_text(l10n.format_value("trial-self-level2-denied"), parse_mode="HTML")
+        await callback.message.delete()
+        await show_active_trial_info(callback.message, rw_user, user.remnawave_uuid if user else None, l10n)
         return
 
-    # --- Check if already has trial ---
-    if rw_user:
-        tags = rw_user.get('tag') or ''
-        if 'TRIAL_YES' in tags:
-            await callback.answer()
-            await callback.message.delete()
-            await show_active_trial_info(callback.message, rw_user, user.remnawave_uuid, l10n)
-            return
-
-    # --- Proceed to promo request (existing flow) ---
+    # Proceed to promo request
     await callback.answer()
     await callback.message.edit_text(l10n.format_value("trial-promo-request"))
     await state.set_state(UserStates.trial_promo)
@@ -339,54 +366,18 @@ async def trial_for_self_cb(callback: types.CallbackQuery, state: FSMContext, se
 
 @router.callback_query(F.data == "trial_for_friend")
 async def trial_for_friend_cb(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
-    """Flow: level-1 user gifts a trial to a friend. Checks requester is level-1."""
-    from bot.services.remnawave import api
+    """Flow: level-1 user gifts a trial to a friend."""
 
-    tg_user = callback.from_user
-    # Requester's username in Telegram (may be None)
-    tg_username = tg_user.username
+    # Level-1 check: search all accounts by tg_id, find first non-tg_ non-XX-suffix username
+    level1_username = await get_level1_username(callback.from_user.id)
 
-    # Level-1 check: requester's Remnawave username must NOT start with 'tg_'
-    is_level1 = False
-    level1_username = None  # their Remnawave username (for the note/notification)
-
-    user_db = await session.get(models.User, tg_user.id)
-
-    if user_db and user_db.remnawave_uuid:
-        try:
-            rw_data = await api.get_user(user_db.remnawave_uuid)
-            uname = (rw_data or {}).get('username', '')
-            if uname and not uname.startswith('tg_'):
-                is_level1 = True
-                level1_username = uname
-        except: pass
-
-    # Also try by tg_username if no uuid match
-    if not is_level1 and tg_username:
-        try:
-            users_resp = await api.get_users(search=tg_username)
-            candidates = []
-            if isinstance(users_resp, list): candidates = users_resp
-            elif isinstance(users_resp, dict):
-                for key in ['users', 'data', 'items']:
-                    if key in users_resp and isinstance(users_resp[key], list):
-                        candidates = users_resp[key]; break
-                if not candidates and isinstance(users_resp.get('response'), dict):
-                    candidates = users_resp['response'].get('users', [])
-            for u in candidates:
-                if u.get('username') == tg_username and not tg_username.startswith('tg_'):
-                    is_level1 = True
-                    level1_username = tg_username
-                    break
-        except: pass
-
-    if not is_level1:
+    if not level1_username:
         await callback.answer()
         await callback.message.edit_text(l10n.format_value("trial-friend-not-level1"), parse_mode="HTML")
         return
 
     # Store referrer info in FSM
-    await state.update_data(referrer_username=level1_username, referrer_tg_id=tg_user.id)
+    await state.update_data(referrer_username=level1_username, referrer_tg_id=callback.from_user.id)
 
     # Ask for friend's contact
     await callback.answer()
