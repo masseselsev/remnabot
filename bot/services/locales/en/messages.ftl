@@ -59,6 +59,32 @@ trial-promo-request = 🎟 Please enter a promo code to activate your 3-day free
 trial-promo-invalid = ❌ Invalid or used promo code.
 trial-promo-cancelled = ❌ Promo code entry cancelled.
 
+# Trial for self or friend choice
+btn-trial-for-self = 👤 For myself
+btn-trial-for-friend = 👥 For a friend
+btn-share-contact = 📲 Share contact
+trial-who-for-title = 
+    Who are you creating the trial account for?
+trial-self-level2-denied = 
+    ❌ Creating an account for yourself is only available to <b>level-1 users</b>.
+    
+    If you registered via someone else's promo code or gift, your account is already created. Check the «Profile» section.
+trial-friend-not-level1 = 
+    ❌ Creating an account <b>for a friend</b> is only available to level-1 users (whose username is set in the system).
+    
+    Please register yourself first. If you already have — make sure you have a @username set in Telegram.
+trial-friend-request-contact = 
+    📲 <b>Share your friend's Telegram contact.</b>
+    
+    Press the button below and select your friend from the contacts list. The contact must be registered on Telegram.
+trial-friend-contact-no-id = 
+    ❌ Could not get the Telegram ID from this contact.
+    
+    Make sure your friend is registered on Telegram and try again.
+trial-friend-already-exists = ❌ This user already has an account in the system.
+trial-friend-created = ✅ Account for <b>{ $name }</b> created! Send this link to your friend:
+trial-friend-failed = ❌ Failed to create an account for your friend. Please contact support.
+
 trial-instruction-title = 📖 <b>Setup Instructions</b>
 
 trial-instruction-profile-hint = Click the 👤 <b>Profile</b> button to see your active subscriptions and links.

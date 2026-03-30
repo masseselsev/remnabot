@@ -19,6 +19,7 @@ router = Router()
 
 class UserStates(StatesGroup):
     trial_promo = State()
+    trial_friend_contact = State()  # Waiting for friend's Telegram contact
 
 logger = structlog.get_logger()
 
@@ -268,62 +269,314 @@ async def process_trial(message: types.Message, state: FSMContext, session, l10n
         await message.answer(l10n.format_value("disclaimer-not-accepted-msg"), parse_mode="HTML")
         return
     
+    # Show choice: for self or for friend
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text=l10n.format_value("btn-trial-for-self"), callback_data="trial_for_self")],
+        [types.InlineKeyboardButton(text=l10n.format_value("btn-trial-for-friend"), callback_data="trial_for_friend")],
+        [types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="cancel_trial_promo")]
+    ])
+    await message.answer(l10n.format_value("trial-who-for-title"), reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data == "trial_for_self")
+async def trial_for_self_cb(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
+    """Flow: user creates trial for themselves. Checks they are level-1."""
     from bot.services.remnawave import api
-    from bot.config import config
-    
-    # 1. Check if user already has a trial via API (Source of Truth)
+
+    user = await session.get(models.User, callback.from_user.id)
+
+    # --- Level check: user must NOT be a tg_xxx (level-2) user ---
+    # Check by remnawave username: if it starts with 'tg_', this is a level-2 account
+    is_level2 = False
     rw_user = None
-    if user.remnawave_uuid:
+    if user and user.remnawave_uuid:
         try:
             rw_user = await api.get_user(user.remnawave_uuid)
+            uname = (rw_user or {}).get('username', '')
+            if uname.startswith('tg_'):
+                is_level2 = True
         except: pass
-    
+
+    # Also search by tg_id pattern if not found via uuid
     if not rw_user:
         try:
-            # Search by dedicated name
-            search_name = f"tg_{user.id}"
-            candidates = await api.get_users(search=search_name)
-            
-            # Extract list from various possible response formats
-            users_list = []
-            if isinstance(candidates, list): users_list = candidates
-            elif isinstance(candidates, dict):
-                 for key in ['users', 'data', 'items', 'response']:
-                     if key in candidates:
-                         val = candidates[key]
-                         if isinstance(val, list): users_list = val
-                         elif isinstance(val, dict) and 'users' in val: users_list = val['users']
-                         break
-            
-            for u in users_list:
+            search_name = f"tg_{callback.from_user.id}"
+            candidates_resp = await api.get_users(search=search_name)
+            candidates = []
+            if isinstance(candidates_resp, list): candidates = candidates_resp
+            elif isinstance(candidates_resp, dict):
+                for key in ['users', 'data', 'items']:
+                    if key in candidates_resp and isinstance(candidates_resp[key], list):
+                        candidates = candidates_resp[key]; break
+                if not candidates and isinstance(candidates_resp.get('response'), dict):
+                    candidates = candidates_resp['response'].get('users', [])
+            for u in candidates:
                 if u.get('username') == search_name:
                     rw_user = u
-                    user.remnawave_uuid = u.get('uuid') or u.get('id')
-                    await session.commit()
+                    is_level2 = True  # found tg_xxx account
                     break
         except: pass
 
-    if rw_user:
-        tags = rw_user.get('tag') or ""
-        if "TRIAL_YES" in tags:
-            # User already has trial. Show info.
-            # We reuse the display logic from execute_trial_creation but with msg-active instead of msg-activated
-            try:
-                # We need to render the trial info similar to execute_trial_creation
-                # (I'll define a small helper or just do it here to avoid duplication issues)
-                await show_active_trial_info(message, rw_user, user.remnawave_uuid, l10n)
-                return
-            except Exception as e:
-                import structlog
-                logger = structlog.get_logger()
-                logger.error("show_trial_info_failed", error=str(e))
+    if is_level2:
+        await callback.answer()
+        await callback.message.edit_text(l10n.format_value("trial-self-level2-denied"), parse_mode="HTML")
+        return
 
-    # 2. No active trial found on remote -> Proceed to promo request
-    kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="cancel_trial_promo")]
-    ])
-    await message.answer(l10n.format_value("trial-promo-request"), reply_markup=kb)
+    # --- Check if already has trial ---
+    if rw_user:
+        tags = rw_user.get('tag') or ''
+        if 'TRIAL_YES' in tags:
+            await callback.answer()
+            await callback.message.delete()
+            await show_active_trial_info(callback.message, rw_user, user.remnawave_uuid, l10n)
+            return
+
+    # --- Proceed to promo request (existing flow) ---
+    await callback.answer()
+    await callback.message.edit_text(l10n.format_value("trial-promo-request"))
     await state.set_state(UserStates.trial_promo)
+
+
+@router.callback_query(F.data == "trial_for_friend")
+async def trial_for_friend_cb(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
+    """Flow: level-1 user gifts a trial to a friend. Checks requester is level-1."""
+    from bot.services.remnawave import api
+
+    tg_user = callback.from_user
+    # Requester's username in Telegram (may be None)
+    tg_username = tg_user.username
+
+    # Level-1 check: requester's Remnawave username must NOT start with 'tg_'
+    is_level1 = False
+    level1_username = None  # their Remnawave username (for the note/notification)
+
+    user_db = await session.get(models.User, tg_user.id)
+
+    if user_db and user_db.remnawave_uuid:
+        try:
+            rw_data = await api.get_user(user_db.remnawave_uuid)
+            uname = (rw_data or {}).get('username', '')
+            if uname and not uname.startswith('tg_'):
+                is_level1 = True
+                level1_username = uname
+        except: pass
+
+    # Also try by tg_username if no uuid match
+    if not is_level1 and tg_username:
+        try:
+            users_resp = await api.get_users(search=tg_username)
+            candidates = []
+            if isinstance(users_resp, list): candidates = users_resp
+            elif isinstance(users_resp, dict):
+                for key in ['users', 'data', 'items']:
+                    if key in users_resp and isinstance(users_resp[key], list):
+                        candidates = users_resp[key]; break
+                if not candidates and isinstance(users_resp.get('response'), dict):
+                    candidates = users_resp['response'].get('users', [])
+            for u in candidates:
+                if u.get('username') == tg_username and not tg_username.startswith('tg_'):
+                    is_level1 = True
+                    level1_username = tg_username
+                    break
+        except: pass
+
+    if not is_level1:
+        await callback.answer()
+        await callback.message.edit_text(l10n.format_value("trial-friend-not-level1"), parse_mode="HTML")
+        return
+
+    # Store referrer info in FSM
+    await state.update_data(referrer_username=level1_username, referrer_tg_id=tg_user.id)
+
+    # Ask for friend's contact
+    await callback.answer()
+    await callback.message.delete()
+
+    contact_kb = types.ReplyKeyboardMarkup(
+        keyboard=[[types.KeyboardButton(text=l10n.format_value("btn-share-contact"), request_contact=True)]],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+    await callback.message.answer(l10n.format_value("trial-friend-request-contact"), reply_markup=contact_kb, parse_mode="HTML")
+    await state.set_state(UserStates.trial_friend_contact)
+
+
+@router.message(UserStates.trial_friend_contact)
+async def process_friend_contact(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    """Receives friend's contact and creates a trial account for them."""
+    from bot.services.remnawave import api
+    from aiogram.types import ReplyKeyboardRemove
+
+    # Handle cancel via text
+    if message.text and not message.contact:
+        await message.answer(l10n.format_value("trial-friend-request-contact"), parse_mode="HTML")
+        return
+
+    contact = message.contact
+    if not contact:
+        await message.answer(l10n.format_value("trial-friend-contact-no-id"), parse_mode="HTML")
+        return
+
+    friend_tg_id = contact.user_id
+    if not friend_tg_id:
+        await message.answer(l10n.format_value("trial-friend-contact-no-id"), reply_markup=ReplyKeyboardRemove(), parse_mode="HTML")
+        await state.clear()
+        return
+
+    friend_name = contact.first_name or str(friend_tg_id)
+
+    # Remove contact keyboard
+    await message.answer("⏳", reply_markup=ReplyKeyboardRemove())
+
+    # Fetch FSM data
+    data = await state.get_data()
+    referrer_username = data.get('referrer_username', 'unknown')
+    referrer_tg_id = data.get('referrer_tg_id')
+    await state.clear()
+
+    # --- Check if friend already has an account ---
+    friend_username = f"tg_{friend_tg_id}"
+    existing = None
+    try:
+        resp = await api.get_user_by_telegram_id(friend_tg_id)
+        if isinstance(resp, dict) and resp.get('uuid'):
+            existing = resp
+        elif isinstance(resp, list) and resp:
+            existing = resp[0]
+    except: pass
+
+    if not existing:
+        try:
+            search_resp = await api.get_users(search=friend_username)
+            candidates = []
+            if isinstance(search_resp, list): candidates = search_resp
+            elif isinstance(search_resp, dict):
+                for key in ['users', 'data', 'items']:
+                    if key in search_resp and isinstance(search_resp[key], list):
+                        candidates = search_resp[key]; break
+                if not candidates and isinstance(search_resp.get('response'), dict):
+                    candidates = search_resp['response'].get('users', [])
+            for u in candidates:
+                if u.get('username') == friend_username:
+                    existing = u
+                    break
+        except: pass
+
+    if existing and 'TRIAL_YES' in (existing.get('tag') or ''):
+        await message.answer(l10n.format_value("trial-friend-already-exists"), parse_mode="HTML")
+        return
+
+    # --- Create account for friend ---
+    tg_requester = f"@{message.from_user.username}" if message.from_user.username else message.from_user.full_name
+    note = f"Gift trial by {referrer_username} ({tg_requester})"
+
+    success, link = await create_friend_trial(friend_tg_id, friend_name, note, l10n)
+
+    if not success:
+        await message.answer(l10n.format_value("trial-friend-failed"), parse_mode="HTML")
+        return
+
+    # --- Send result to requester ---
+    await message.answer(
+        l10n.format_value("trial-friend-created", {"name": friend_name}) + f"\n<code>{link}</code>",
+        parse_mode="HTML",
+        disable_web_page_preview=True
+    )
+
+    # --- Admin notification ---
+    try:
+        admin_msg = (
+            f"🎁 <b>Триал подарен</b>\n\n"
+            f"👤 Получатель: <b>{friend_name}</b> (tg_id: <code>{friend_tg_id}</code>)\n"
+            f"👥 Подарил: <b>{referrer_username}</b> ({tg_requester}, tg_id: <code>{referrer_tg_id}</code>)"
+        )
+        await message.bot.send_message(config.admin_group_id, admin_msg, parse_mode="HTML")
+    except Exception as e:
+        logger.error("friend_trial_admin_notify_failed", error=str(e))
+
+
+async def create_friend_trial(friend_tg_id: int, friend_name: str, note: str, l10n) -> tuple[bool, str | None]:
+    """Creates a trial account for a friend directly via API, without creating a DB record."""
+    from bot.services.remnawave import api
+    from bot.services.settings import SettingsService
+
+    try:
+        # 1. Create the Remnawave user
+        resp = await api.create_user(friend_tg_id, friend_name)
+        rw_uuid = None
+        if resp:
+            if 'response' in resp:
+                rw_uuid = resp['response'].get('uuid') or resp['response'].get('id')
+            else:
+                rw_uuid = resp.get('uuid') or resp.get('id')
+
+        if not rw_uuid:
+            # Maybe already exists — try to find
+            search_resp = await api.get_users(search=f"tg_{friend_tg_id}")
+            candidates = []
+            if isinstance(search_resp, list): candidates = search_resp
+            elif isinstance(search_resp, dict):
+                for key in ['users', 'data', 'items']:
+                    if key in search_resp and isinstance(search_resp[key], list):
+                        candidates = search_resp[key]; break
+                if not candidates and isinstance(search_resp.get('response'), dict):
+                    candidates = search_resp['response'].get('users', [])
+            for u in candidates:
+                if u.get('username') == f"tg_{friend_tg_id}":
+                    rw_uuid = u.get('uuid') or u.get('id')
+                    break
+
+        if not rw_uuid:
+            logger.error("friend_trial_no_uuid", friend_tg_id=friend_tg_id)
+            return False, None
+
+        # 2. Load trial settings
+        settings = await SettingsService.get_trial_settings()
+        target_traffic_gb = settings.get('traffic', 10)
+        target_duration_days = settings.get('days', 3)
+
+        # 3. Apply settings
+        rw_user = await api.get_user(rw_uuid)
+        current_tag = rw_user.get('tag') or ''
+        if 'TRIAL_YES' in current_tag:
+            logger.warning("friend_already_has_trial", rw_uuid=rw_uuid)
+            return False, None
+
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        new_expire = now + timedelta(days=target_duration_days)
+        bytes_to_add = int(target_traffic_gb * 1024 * 1024 * 1024)
+
+        updates = {
+            'tag': 'TRIAL_YES',
+            'description': note,
+            'onHold': False,
+            'trafficLimitBytes': bytes_to_add,
+            'trafficLimitStrategy': 'NO_RESET',
+            'expireAt': new_expire.isoformat().replace('+00:00', 'Z')
+        }
+        await api.update_user(rw_uuid, updates)
+
+        # 4. Squad assignment
+        squad_uuid = await SettingsService.get_setting('trial_squad_uuid')
+        if squad_uuid:
+            try:
+                await api.add_user_to_squad(rw_uuid, squad_uuid)
+            except Exception as e:
+                logger.error("friend_trial_squad_failed", error=str(e))
+
+        # 5. Get subscription link
+        fresh_data = await api.get_user(rw_uuid)
+        link = fresh_data.get('subscriptionUrl') or f"{config.remnawave_url}/sub/{rw_uuid}"
+        from bot.utils.crypto import get_crypto_link
+        link = await get_crypto_link(link)
+
+        return True, link
+
+    except Exception as e:
+        logger.error("create_friend_trial_failed", friend_tg_id=friend_tg_id, error=str(e))
+        return False, None
+
 
 @router.callback_query(F.data == "cancel_trial_promo")
 async def cancel_trial_promo(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
