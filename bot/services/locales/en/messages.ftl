@@ -65,6 +65,11 @@ btn-trial-for-friend = 👥 For a friend
 btn-share-contact = 📲 Share contact
 trial-who-for-title = 
     Who are you creating the trial account for?
+trial-self-already-exists = 
+    ❌ You already have an active account in the system. 
+    
+    The free trial (3 days) is only available for brand new users. Check the «Profile» section.
+trial-friend-self-gifting-denied = ❌ You cannot gift a trial account to yourself. Please provide another friend's contact.
 trial-self-level2-denied = 
     ❌ Creating an account for yourself is only available to <b>level-1 users</b>.
     
@@ -81,7 +86,7 @@ trial-friend-contact-no-id =
     ❌ Could not get the Telegram ID from this contact.
     
     Make sure your friend is registered on Telegram and try again.
-trial-friend-already-exists = ❌ This user already has an account in the system.
+trial-friend-already-exists = ❌ This user already has an account (Level 1 or 2) in the system.
 trial-friend-created =
     ✅ Subscription issued for <b>{ $name }</b>!
 

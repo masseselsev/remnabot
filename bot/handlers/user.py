@@ -330,32 +330,28 @@ async def trial_for_self_cb(callback: types.CallbackQuery, state: FSMContext, se
     user = await session.get(models.User, callback.from_user.id)
     from bot.services.remnawave import api
 
-    # Check if user already has a trial
-    rw_user = None
-    if user and user.remnawave_uuid:
-        try:
-            rw_user = await api.get_user(user.remnawave_uuid)
-        except: pass
+    # 1. Check ALL existing accounts (Standard & Manual)
+    std_acc, manual_accs = await check_existing_accounts(callback.from_user.id)
+    
+    # If standard account exists, it might be a trial we want to show
+    if std_acc:
+        if 'TRIAL_YES' in (std_acc.get('tag') or ''):
+            await callback.answer()
+            await callback.message.delete()
+            await show_active_trial_info(callback.message, std_acc, std_acc.get('uuid') or std_acc.get('id'), l10n)
+            return
+        
+        if user and not user.remnawave_uuid:
+            user.remnawave_uuid = std_acc.get('uuid') or std_acc.get('id')
+            await session.commit()
 
-    # Also search by tg_id username
-    if not rw_user:
-        try:
-            search_name = f"tg_{callback.from_user.id}"
-            cands_resp = await api.get_users(search=search_name)
-            cands = extract_users_list(cands_resp)
-            for u in cands:
-                if u.get('username') == search_name:
-                    rw_user = u
-                    if user:
-                        user.remnawave_uuid = u.get('uuid') or u.get('id')
-                        await session.commit()
-                    break
-        except: pass
-
-    if rw_user and 'TRIAL_YES' in (rw_user.get('tag') or ''):
+    # 2. Block if ANY account exists (unless admin)
+    has_any_account = (std_acc is not None) or (len(manual_accs) > 0)
+    is_admin = callback.from_user.id in config.admin_ids
+    
+    if has_any_account and not is_admin:
         await callback.answer()
-        await callback.message.delete()
-        await show_active_trial_info(callback.message, rw_user, user.remnawave_uuid if user else None, l10n)
+        await callback.message.edit_text(l10n.format_value("trial-self-already-exists"), parse_mode="HTML")
         return
 
     # Proceed to promo request
@@ -425,35 +421,17 @@ async def process_friend_contact(message: types.Message, state: FSMContext, sess
     referrer_tg_id = data.get('referrer_tg_id')
     await state.clear()
 
-    # --- Check if friend already has an account ---
-    friend_username = f"tg_{friend_tg_id}"
-    existing = None
-    try:
-        resp = await api.get_user_by_telegram_id(friend_tg_id)
-        if isinstance(resp, dict) and resp.get('uuid'):
-            existing = resp
-        elif isinstance(resp, list) and resp:
-            existing = resp[0]
-    except: pass
+    # 1. Self-gifting check (unless admin)
+    is_admin = message.from_user.id in config.admin_ids
+    if friend_tg_id == message.from_user.id and not is_admin:
+        await message.answer(l10n.format_value("trial-friend-self-gifting-denied"), parse_mode="HTML")
+        return
 
-    if not existing:
-        try:
-            search_resp = await api.get_users(search=friend_username)
-            candidates = []
-            if isinstance(search_resp, list): candidates = search_resp
-            elif isinstance(search_resp, dict):
-                for key in ['users', 'data', 'items']:
-                    if key in search_resp and isinstance(search_resp[key], list):
-                        candidates = search_resp[key]; break
-                if not candidates and isinstance(search_resp.get('response'), dict):
-                    candidates = search_resp['response'].get('users', [])
-            for u in candidates:
-                if u.get('username') == friend_username:
-                    existing = u
-                    break
-        except: pass
-
-    if existing and 'TRIAL_YES' in (existing.get('tag') or ''):
+    # --- Check if friend already has ANY account (lvl 1 or 2) ---
+    std_acc, manual_accs = await check_existing_accounts(friend_tg_id)
+    has_any = (std_acc is not None) or (len(manual_accs) > 0)
+    
+    if has_any and not is_admin:
         await message.answer(l10n.format_value("trial-friend-already-exists"), parse_mode="HTML")
         return
 
