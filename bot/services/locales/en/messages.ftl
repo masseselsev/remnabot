@@ -82,7 +82,14 @@ trial-friend-contact-no-id =
     
     Make sure your friend is registered on Telegram and try again.
 trial-friend-already-exists = ❌ This user already has an account in the system.
-trial-friend-created = ✅ Account for <b>{ $name }</b> created! Send this link to your friend:
+trial-friend-created =
+    ✅ Subscription issued for <b>{ $name }</b>!
+
+    Your friend can now open @GeeseCatapultBot, sign in, and follow the <b>Instruction</b> section for setup.
+
+    Subscription link for adding to <b>Happ</b>:
+    <code>{ $link }</code>
+
 trial-friend-failed = ❌ Failed to create an account for your friend. Please contact support.
 
 trial-instruction-title = 📖 <b>Setup Instructions</b>

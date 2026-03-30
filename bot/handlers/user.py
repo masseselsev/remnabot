@@ -469,7 +469,7 @@ async def process_friend_contact(message: types.Message, state: FSMContext, sess
 
     # --- Send result to requester ---
     await message.answer(
-        l10n.format_value("trial-friend-created", {"name": friend_name}) + f"\n<code>{link}</code>",
+        l10n.format_value("trial-friend-created", {"name": friend_name, "link": link}),
         parse_mode="HTML",
         disable_web_page_preview=True
     )
