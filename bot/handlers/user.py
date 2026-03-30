@@ -212,7 +212,11 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
         fallback_msg = "Welcome, {$name}!" if lang_code == 'en' else "Добро пожаловать, {$name}!"
         welcome_text = fallback_msg.replace("{$name}", message.from_user.first_name)
     else:
+        # Support both {$name} and {} (in case user entered it wrongly)
         welcome_text = welcome_setting.replace("{$name}", message.from_user.first_name)
+        welcome_text = welcome_text.replace("{}", message.from_user.first_name)
+        # Unescape literal \n characters
+        welcome_text = welcome_text.replace("\\n", "\n")
     
     # Combined Message construction
     full_text = welcome_text
