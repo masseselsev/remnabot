@@ -11,6 +11,7 @@ from bot.services.remnawave import api
 from datetime import datetime, timedelta
 from html import escape
 import structlog
+from bot.handlers.user import UserStates
 
 logger = structlog.get_logger()
 
@@ -168,7 +169,7 @@ async def admin_search_user_start(callback: types.CallbackQuery, state: FSMConte
     await state.set_state(AdminStates.search_user_id)
     await callback.message.edit_text("Enter Telegram ID of the user to view:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="admin_menu")]]))
 
-@router.message(F.contact | F.forward_origin)
+@router.message((F.contact | F.forward_origin), ~StateFilter(UserStates.trial_friend_contact))
 async def admin_intercept_contact_or_forward(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
     if message.from_user.id not in config.admin_ids:
         return
