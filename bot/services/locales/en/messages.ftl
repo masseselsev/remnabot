@@ -62,7 +62,7 @@ trial-promo-cancelled = ❌ Promo code entry cancelled.
 # Trial for self or friend choice
 btn-trial-for-self = 👤 For myself
 btn-trial-for-friend = 👥 For a friend
-btn-share-contact = 📲 Share contact
+btn-share-contact = 📲 Select a Friend from Contacts
 trial-who-for-title = 
     Who are you creating the trial account for?
 trial-self-already-exists = 

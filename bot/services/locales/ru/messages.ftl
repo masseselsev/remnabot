@@ -62,7 +62,7 @@ trial-promo-cancelled = ❌ Ввод промокода отменен.
 # Trial for self or friend choice
 btn-trial-for-self = 👤 Для себя
 btn-trial-for-friend = 👥 Для друга
-btn-share-contact = 📲 Поделиться контактом
+btn-share-contact = 📲 Выбрать друга из контактов
 trial-who-for-title = 
     Для кого вы хотите создать пробный аккаунт?
 trial-self-already-exists = 

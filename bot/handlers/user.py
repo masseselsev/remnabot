@@ -384,7 +384,14 @@ async def trial_for_friend_cb(callback: types.CallbackQuery, state: FSMContext, 
     await callback.message.delete()
 
     contact_kb = types.ReplyKeyboardMarkup(
-        keyboard=[[types.KeyboardButton(text=l10n.format_value("btn-share-contact"), request_contact=True)]],
+        keyboard=[[types.KeyboardButton(
+            text=l10n.format_value("btn-share-contact"),
+            request_users=types.KeyboardButtonRequestUsers(
+                request_id=1,
+                user_is_bot=False,
+                max_quantity=1
+            )
+        )]],
         resize_keyboard=True,
         one_time_keyboard=True
     )
@@ -399,22 +406,39 @@ async def process_friend_contact(message: types.Message, state: FSMContext, sess
     from aiogram.types import ReplyKeyboardRemove
 
     # Handle cancel via text
-    if message.text and not message.contact:
+    if message.text and not (message.contact or message.users_shared or message.user_shared):
         await message.answer(l10n.format_value("trial-friend-request-contact"), parse_mode="HTML")
         return
 
-    contact = message.contact
-    if not contact:
+    friend_tg_id = None
+    friend_name = None
+
+    if message.users_shared:
+        friend_tg_id = message.users_shared.user_ids[0]
+        # Try to get name via get_chat
+        try:
+            chat = await message.bot.get_chat(friend_tg_id)
+            friend_name = chat.first_name or chat.full_name
+        except Exception:
+            friend_name = f"User {friend_tg_id}"
+    elif message.user_shared:  # Fallback for older Bot API/types
+        friend_tg_id = message.user_shared.user_id
+        try:
+            chat = await message.bot.get_chat(friend_tg_id)
+            friend_name = chat.first_name or chat.full_name
+        except Exception:
+            friend_name = f"User {friend_tg_id}"
+    elif message.contact:
+        friend_tg_id = message.contact.user_id
+        friend_name = message.contact.first_name or str(friend_tg_id)
+
+    if not friend_tg_id:
         await message.answer(l10n.format_value("trial-friend-contact-no-id"), parse_mode="HTML")
         return
 
-    friend_tg_id = contact.user_id
-    if not friend_tg_id:
-        await message.answer(l10n.format_value("trial-friend-contact-no-id"), reply_markup=ReplyKeyboardRemove(), parse_mode="HTML")
-        await state.clear()
-        return
-
-    friend_name = contact.first_name or str(friend_tg_id)
+    # Extra check for friend_name
+    if not friend_name:
+        friend_name = str(friend_tg_id)
 
     # Remove contact keyboard
     await message.answer("⏳", reply_markup=ReplyKeyboardRemove())
