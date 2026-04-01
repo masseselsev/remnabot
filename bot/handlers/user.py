@@ -412,31 +412,44 @@ async def process_friend_contact(message: types.Message, state: FSMContext, sess
 
     friend_tg_id = None
     friend_name = None
+    friend_username = None
 
     if message.users_shared:
         friend_tg_id = message.users_shared.user_ids[0]
-        # Try to get name via get_chat
         try:
             chat = await message.bot.get_chat(friend_tg_id)
-            friend_name = chat.first_name or chat.full_name
+            friend_name = chat.full_name or chat.first_name
+            friend_username = f"@{chat.username}" if chat.username else "N/A"
         except Exception:
             friend_name = f"User {friend_tg_id}"
-    elif message.user_shared:  # Fallback for older Bot API/types
+            friend_username = "N/A"
+    elif message.user_shared:
         friend_tg_id = message.user_shared.user_id
         try:
             chat = await message.bot.get_chat(friend_tg_id)
-            friend_name = chat.first_name or chat.full_name
+            friend_name = chat.full_name or chat.first_name
+            friend_username = f"@{chat.username}" if chat.username else "N/A"
         except Exception:
             friend_name = f"User {friend_tg_id}"
+            friend_username = "N/A"
     elif message.contact:
         friend_tg_id = message.contact.user_id
-        friend_name = message.contact.first_name or str(friend_tg_id)
+        friend_name = message.contact.first_name
+        if message.contact.last_name:
+            friend_name += f" {message.contact.last_name}"
+        # Contacts usually don't have username field, but we can try get_chat if ID is present
+        try:
+            chat = await message.bot.get_chat(friend_tg_id)
+            friend_username = f"@{chat.username}" if chat.username else "N/A"
+            if not friend_name:
+                friend_name = chat.full_name or chat.first_name
+        except Exception:
+            friend_username = "N/A"
 
     if not friend_tg_id:
         await message.answer(l10n.format_value("trial-friend-contact-no-id"), parse_mode="HTML")
         return
 
-    # Extra check for friend_name
     if not friend_name:
         friend_name = str(friend_tg_id)
 
@@ -465,7 +478,11 @@ async def process_friend_contact(message: types.Message, state: FSMContext, sess
 
     # --- Create account for friend ---
     tg_requester = f"@{message.from_user.username}" if message.from_user.username else message.from_user.full_name
-    note = f"Gift trial by {referrer_username} ({tg_requester})"
+    note = (
+        f"Name: {friend_name}\n"
+        f"Username: {friend_username}\n"
+        f"Referred by: {referrer_username} ({tg_requester})"
+    )
 
     success, link = await create_friend_trial(friend_tg_id, friend_name, note, l10n)
 
@@ -1342,8 +1359,13 @@ async def process_trial_promo(message: types.Message, state: FSMContext, session
 
     if is_valid:
         await state.clear()
-        tg_username = f"@{message.from_user.username}" if message.from_user.username else message.from_user.full_name
-        note = f"User: {tg_username}, Promo: {promo_code}"
+        tg_username = f"@{message.from_user.username}" if message.from_user.username else "N/A"
+        tg_fullname = message.from_user.full_name
+        note = (
+            f"Name: {tg_fullname}\n"
+            f"Username: {tg_username}\n"
+            f"Promo/Referrer: {promo_code}"
+        )
         await execute_trial_creation(message, session, l10n, user, note=note)
         
         if referrer_rw_user:
