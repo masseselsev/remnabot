@@ -297,8 +297,11 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                         acc_devices = await api.get_user_devices(acc_uuid)
                         acc_device_count = len(acc_devices)
                         
-                        acc_is_hwid_limited = acc_full.get('convertedUserInfo', {}).get('isHwidLimited', True)
-                        if not acc_is_hwid_limited:
+                        # Check if HWID limit is disabled (either via isHwidLimited=False or hwidDeviceLimit=null)
+                        is_hwid_limited_ui = acc_full.get('convertedUserInfo', {}).get('isHwidLimited', True)
+                        is_hwid_limit_null = acc_full.get('hwidDeviceLimit') is None
+                        
+                        if not is_hwid_limited_ui or is_hwid_limit_null:
                             acc_display_limit = "∞"
                         else:
                             acc_display_limit = str(acc_full.get('multiLogin', 2) or 2)
@@ -776,9 +779,11 @@ async def generate_profile_content(user_id, session, l10n):
         devices = await api.get_user_devices(rw_uuid)
         device_count = len(devices)
         
-        # Check if HWID limit is disabled
-        is_hwid_limited = found_user_data.get('convertedUserInfo', {}).get('isHwidLimited', True)
-        if not is_hwid_limited:
+        # Check if HWID limit is disabled (check isHwidLimited if available, otherwise check if hwidDeviceLimit is null)
+        is_hwid_limited_ui = found_user_data.get('convertedUserInfo', {}).get('isHwidLimited', True)
+        is_hwid_limit_null = found_user_data.get('hwidDeviceLimit') is None
+        
+        if not is_hwid_limited_ui or is_hwid_limit_null:
             display_limit = "∞"
         else:
             display_limit = str(found_user_data.get('multiLogin', 2) or 2)
@@ -865,8 +870,10 @@ async def generate_profile_content(user_id, session, l10n):
                 acc_device_count = len(acc_devices)
                 
                 # Check if HWID limit is disabled for additional accounts
-                acc_is_hwid_limited = acc_full.get('convertedUserInfo', {}).get('isHwidLimited', True)
-                if not acc_is_hwid_limited:
+                acc_is_hwid_limited_ui = acc_full.get('convertedUserInfo', {}).get('isHwidLimited', True)
+                acc_is_hwid_limit_null = acc_full.get('hwidDeviceLimit') is None
+                
+                if not acc_is_hwid_limited_ui or acc_is_hwid_limit_null:
                     acc_display_limit = "∞"
                 else:
                     acc_display_limit = str(acc_full.get('multiLogin', 2) or 2)
