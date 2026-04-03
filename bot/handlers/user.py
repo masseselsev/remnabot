@@ -314,8 +314,13 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                             # Standard limit logic
                             acc_full = await api.get_user(acc_uuid)
                             raw_limit = acc_full.get('hwidDeviceLimit')
-                            # Default to 2 if limit is null or 0 (unless unlimited)
-                            acc_display_limit = str(raw_limit) if raw_limit else "2"
+                            # User says: if limit is 0, it means infinity. If null, it means 2.
+                            if raw_limit == 0:
+                                acc_display_limit = "∞"
+                            elif raw_limit is None:
+                                acc_display_limit = "2"
+                            else:
+                                acc_display_limit = str(raw_limit)
                         
                         t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_display_limit})
                     except Exception as e:
@@ -808,8 +813,13 @@ async def generate_profile_content(user_id, session, l10n):
             else:
                 # Standard limit logic
                 raw_limit = found_user_data.get('hwidDeviceLimit')
-                # Default to 2 if limit is null or 0 (unless unlimited)
-                display_limit = str(raw_limit) if raw_limit else "2"
+                # User says: if limit is 0, it means infinity. If null, it means 2.
+                if raw_limit == 0:
+                    display_limit = "∞"
+                elif raw_limit is None:
+                    display_limit = "2"
+                else:
+                    display_limit = str(raw_limit)
             
             t_devices = l10n.format_value("profile-devices", {"count": device_count, "limit": display_limit})
         except Exception as e:
@@ -912,8 +922,13 @@ async def generate_profile_content(user_id, session, l10n):
                     # Standard limit logic (Fetch full user for multiLogin/hwidDeviceLimit if needed)
                     acc_full = await api.get_user(acc_uuid)
                     raw_limit = acc_full.get('hwidDeviceLimit')
-                    # Default to 2 if limit is null or 0 (unless unlimited)
-                    acc_display_limit = str(raw_limit) if raw_limit else "2"
+                    # User says: if limit is 0, it means infinity. If null, it means 2.
+                    if raw_limit == 0:
+                        acc_display_limit = "∞"
+                    elif raw_limit is None:
+                        acc_display_limit = "2"
+                    else:
+                        acc_display_limit = str(raw_limit)
                 
                 t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_display_limit})
             except Exception as e:
