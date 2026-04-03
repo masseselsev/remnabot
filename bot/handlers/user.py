@@ -289,7 +289,24 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                         link = await get_crypto_link(link)
 
                     uname = acc.get('username', 'Unknown')
+                    acc_uuid = acc['uuid']
                     
+                    # Fetch devices and full info for HWID limit status
+                    try:
+                        acc_full = await api.get_user(acc_uuid)
+                        acc_devices = await api.get_user_devices(acc_uuid)
+                        acc_device_count = len(acc_devices)
+                        
+                        acc_is_hwid_limited = acc_full.get('convertedUserInfo', {}).get('isHwidLimited', True)
+                        if not acc_is_hwid_limited:
+                            acc_display_limit = "∞"
+                        else:
+                            acc_display_limit = str(acc_full.get('multiLogin', 2) or 2)
+                        
+                        t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_display_limit})
+                    except Exception:
+                        t_devices = "" # Silent fail if API error
+
                     # Link formatting: happ:// stays mono, others become clickable
                     if link.startswith("happ://"):
                         formatted_link = f"🔗 <code>{link}</code>"
@@ -299,9 +316,12 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                     item = [
                         f"{idx}. 👤 <b>{escape(uname)}</b>",
                         f"📅 {l10n.format_value('profile-expiry-caption') or 'До:'} {exp_date}",
-                        f"{traffic_str}",
-                        formatted_link
+                        f"{traffic_str}"
                     ]
+                    if t_devices:
+                        item.append(t_devices)
+                    item.append(formatted_link)
+                    
                     sub_lines.append("\n".join(item))
 
             if len(sub_lines) > 1:
@@ -837,19 +857,25 @@ async def generate_profile_content(user_id, session, l10n):
 
             t_link = l10n.format_value("profile-link", {"link": formatted_link})
             
-            # Device count for additional accounts
+            # Device count for additional accounts (get full details for HWID limit status)
             acc_uuid = acc.get('uuid')
-            acc_devices = await api.get_user_devices(acc_uuid)
-            acc_device_count = len(acc_devices)
-            
-            # Check if HWID limit is disabled for additional accounts
-            acc_is_hwid_limited = acc.get('convertedUserInfo', {}).get('isHwidLimited', True)
-            if not acc_is_hwid_limited:
-                acc_display_limit = "∞"
-            else:
-                acc_display_limit = str(acc.get('multiLogin', 2) or 2)
-
-            t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_display_limit})
+            try:
+                acc_full = await api.get_user(acc_uuid)
+                acc_devices = await api.get_user_devices(acc_uuid)
+                acc_device_count = len(acc_devices)
+                
+                # Check if HWID limit is disabled for additional accounts
+                acc_is_hwid_limited = acc_full.get('convertedUserInfo', {}).get('isHwidLimited', True)
+                if not acc_is_hwid_limited:
+                    acc_display_limit = "∞"
+                else:
+                    acc_display_limit = str(acc_full.get('multiLogin', 2) or 2)
+                
+                t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_display_limit})
+            except Exception:
+                # Fallback to lite data if get_user fails
+                acc_devices = await api.get_user_devices(acc_uuid)
+                t_devices = l10n.format_value("profile-devices", {"count": len(acc_devices), "limit": acc.get('multiLogin', 2) or 2})
 
             item_text = l10n.format_value("profile-account-item", {
                 "username": u_name, 
