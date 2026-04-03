@@ -290,11 +290,17 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
 
                     uname = acc.get('username', 'Unknown')
                     
+                    # Link formatting: happ:// stays mono, others become clickable
+                    if link.startswith("happ://"):
+                        formatted_link = f"🔗 <code>{link}</code>"
+                    else:
+                        formatted_link = f'🔗 <a href="{link}">{link}</a>'
+
                     item = [
                         f"{idx}. 👤 <b>{escape(uname)}</b>",
                         f"📅 {l10n.format_value('profile-expiry-caption') or 'До:'} {exp_date}",
                         f"{traffic_str}",
-                        f"🔗 <code>{link}</code>"
+                        formatted_link
                     ]
                     sub_lines.append("\n".join(item))
 
@@ -490,14 +496,20 @@ async def process_friend_contact(message: types.Message, state: FSMContext, sess
         await message.answer(l10n.format_value("trial-friend-failed"), parse_mode="HTML")
         return
 
+    # Link formatting: happ:// stays mono, others become clickable
+    if link and link.startswith("happ://"):
+        formatted_link = f"<code>{link}</code>"
+    else:
+        formatted_link = f'<a href="{link}">{link}</a>'
+
     # --- Send result to requester ---
     await message.answer(
-        l10n.format_value("trial-friend-created", {"name": friend_name, "link": link}),
+        l10n.format_value("trial-friend-created", {"name": friend_name, "link": formatted_link}),
         parse_mode="HTML",
         disable_web_page_preview=True
     )
 
-    # --- Admin notification ---
+    # --- Admin notification (keep code blocks/mono for admin log) ---
     try:
         admin_msg = (
             f"🎁 <b>Триал подарен</b>\n\n"
@@ -634,11 +646,17 @@ async def show_active_trial_info(messageable, data, uuid, l10n: FluentLocalizati
     instruction = l10n.format_value('trial-instruction-hint')
 
 
+    # Link formatting: happ:// stays mono, others become clickable
+    if link.startswith("happ://"):
+        formatted_link = f"<code>{link}</code>"
+    else:
+        formatted_link = f'<a href="{link}">{link}</a>'
+
     await messageable.answer(
         f"{msg_active}\n\n"
         f"{msg_traffic}\n"
         f"{msg_expires}\n\n"
-        f"{msg_link}\n<code>{link}</code>\n\n"
+        f"{msg_link}\n{formatted_link}\n\n"
         f"{instruction}",
         disable_web_page_preview=True,
         parse_mode="HTML"
@@ -726,8 +744,21 @@ async def generate_profile_content(user_id, session, l10n):
         if "TRIAL_YES" in (found_user_data.get('tag') or ""):
             main_link = await get_crypto_link(main_link)
 
-        t_link = l10n.format_value("profile-link", {"link": main_link})
-        traffic_info += f"\n{t_link}"
+        # Link formatting: happ:// stays mono, others become clickable
+        if main_link.startswith("happ://"):
+            formatted_main_link = f"<code>{main_link}</code>"
+        else:
+            formatted_main_link = f'<a href="{main_link}">{main_link}</a>'
+
+        t_link = l10n.format_value("profile-link", {"link": formatted_main_link})
+        
+        # Device count
+        devices = await api.get_user_devices(rw_uuid)
+        device_count = len(devices)
+        device_limit = found_user_data.get('multiLogin', 2) or 2
+        t_devices = l10n.format_value("profile-devices", {"count": device_count, "limit": device_limit})
+
+        traffic_info = f"\n{t_tariff}\n{t_traffic}\n{t_devices}\n{t_link}"
 
     # Additional Accounts Visibility
     std_acc, manual_accs = await check_existing_accounts(user.id)
@@ -791,12 +822,26 @@ async def generate_profile_content(user_id, session, l10n):
             if "TRIAL_YES" in (acc.get('tag') or ""):
                 link = await get_crypto_link(link)
 
-            t_link = l10n.format_value("profile-link", {"link": link})
+            # Link formatting: happ:// stays mono, others become clickable
+            if link.startswith("happ://"):
+                formatted_link = f"<code>{link}</code>"
+            else:
+                formatted_link = f'<a href="{link}">{link}</a>'
+
+            t_link = l10n.format_value("profile-link", {"link": formatted_link})
             
+            # Device count for additional accounts
+            acc_uuid = acc.get('uuid')
+            acc_devices = await api.get_user_devices(acc_uuid)
+            acc_device_count = len(acc_devices)
+            acc_device_limit = acc.get('multiLogin', 2) or 2
+            t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_device_limit})
+
             item_text = l10n.format_value("profile-account-item", {
                 "username": u_name, 
                 "expiry": exp_str,
                 "traffic": t_traffic,
+                "devices": t_devices,
                 "link": t_link
             })
             additional_items.append(item_text)

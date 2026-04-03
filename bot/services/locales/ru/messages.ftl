@@ -25,7 +25,8 @@ profile-status = Статус: { $status }
 profile-expiry = 📅 Активна до { $date }
 profile-expiry-caption = Активна до
 profile-traffic = 📊 Трафик: { $used } / { $limit } GB ({ $percent }%) { $bar }
-profile-link = 🔗 Ссылка: <code>{ $link }</code>
+profile-devices = 📱 Устройств: { $count } / { $limit }
+profile-link = 🔗 Ссылка: { $link }
 
 profile-additional-accounts = 
     <b>##########################</b>
@@ -34,6 +35,7 @@ profile-account-item =
     👤 <b>{ $username }</b>
     { $expiry }
     { $traffic }
+    { $devices }
     { $link }
 
 subscription-active = ✅ Активна до { $date }
