@@ -89,6 +89,10 @@ class RemnawaveAPI:
         # Spec: GET /api/users/{uuid}
         return await self._request("GET", f"users/{uuid}")
 
+    async def get_sub_info(self, short_uuid: str):
+        # GET /api/sub/{shortUuid} - public endpoint for subscription status
+        return await self._request("GET", f"sub/{short_uuid}")
+
     async def update_user(self, uuid: str, data: dict):
         # Spec: PATCH /api/users
         # Body: UpdateUserRequestDto (uuid is used to identify the user)

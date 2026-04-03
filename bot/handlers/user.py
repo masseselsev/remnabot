@@ -8,6 +8,7 @@ from bot.config import config
 from fluent.runtime import FluentLocalization
 from datetime import datetime, timezone, timedelta
 from dateutil import parser
+import re
 
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -291,23 +292,34 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                     uname = acc.get('username', 'Unknown')
                     acc_uuid = acc['uuid']
                     
-                    # Fetch devices and full info for HWID limit status
+                    # Fetch devices and full sub info for authentic HWID limit status
                     try:
-                        acc_full = await api.get_user(acc_uuid)
                         acc_devices = await api.get_user_devices(acc_uuid)
                         acc_device_count = len(acc_devices)
                         
-                        # Check if HWID limit is disabled (either via isHwidLimited=False or hwidDeviceLimit=null)
-                        is_hwid_limited_ui = acc_full.get('convertedUserInfo', {}).get('isHwidLimited', True)
-                        is_hwid_limit_null = acc_full.get('hwidDeviceLimit') is None
+                        # Robust shortUuid extraction from subscriptionUrl to get isHwidLimited flag
+                        # Regex is safer for URLs with params or trailing slashes
+                        short_id_match = re.search(r'/sub/([a-zA-Z0-9_-]+)', link)
+                        short_uuid = short_id_match.group(1) if short_id_match else None
                         
-                        if not is_hwid_limited_ui or is_hwid_limit_null:
+                        is_hwid_unlimited = False
+                        if short_uuid:
+                            sub_info = await api.get_sub_info(short_uuid)
+                            if sub_info:
+                                # Explicitly check for False (not None, not True)
+                                is_hwid_unlimited = sub_info.get('convertedUserInfo', {}).get('isHwidLimited') == False
+                        
+                        if is_hwid_unlimited:
                             acc_display_limit = "∞"
                         else:
-                            acc_display_limit = str(acc_full.get('multiLogin', 2) or 2)
+                            # Standard limit logic
+                            acc_full = await api.get_user(acc_uuid)
+                            raw_limit = acc_full.get('hwidDeviceLimit')
+                            acc_display_limit = str(raw_limit) if raw_limit is not None else "2"
                         
                         t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_display_limit})
-                    except Exception:
+                    except Exception as e:
+                        logger.error("hwid_fetch_error", error=str(e), acc_uuid=acc_uuid)
                         t_devices = "" # Silent fail if API error
 
                     # Link formatting: happ:// stays mono, others become clickable
@@ -338,7 +350,8 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
 
 @router.message(F.text.in_([
     "🎁 3 дня бесплатно!", "🎁 3-day trial!", "🎁 3 days free!", 
-    "🎁 Try for free", "🎁 Попробовать бесплатно"
+    "🎁 Try for free", "🎁 Попробовать бесплатно",
+    "🔌 Подключиться (3 дня бесплатно!)"
 ]), StateFilter("*"))
 async def process_trial(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
     await state.clear()
@@ -775,20 +788,33 @@ async def generate_profile_content(user_id, session, l10n):
 
         t_link = l10n.format_value("profile-link", {"link": formatted_main_link})
         
-        # Device count
-        devices = await api.get_user_devices(rw_uuid)
-        device_count = len(devices)
-        
-        # Check if HWID limit is disabled (check isHwidLimited if available, otherwise check if hwidDeviceLimit is null)
-        is_hwid_limited_ui = found_user_data.get('convertedUserInfo', {}).get('isHwidLimited', True)
-        is_hwid_limit_null = found_user_data.get('hwidDeviceLimit') is None
-        
-        if not is_hwid_limited_ui or is_hwid_limit_null:
-            display_limit = "∞"
-        else:
-            display_limit = str(found_user_data.get('multiLogin', 2) or 2)
+        # Device count and HWID limit logic (Main Account)
+        try:
+            devices = await api.get_user_devices(rw_uuid)
+            device_count = len(devices)
             
-        t_devices = l10n.format_value("profile-devices", {"count": device_count, "limit": display_limit})
+            # Robust shortUuid extraction from main_link to get isHwidLimited flag
+            short_id_match = re.search(r'/sub/([a-zA-Z0-9_-]+)', main_link)
+            short_uuid = short_id_match.group(1) if short_id_match else None
+            
+            is_hwid_unlimited = False
+            if short_uuid:
+                sub_info = await api.get_sub_info(short_uuid)
+                if sub_info:
+                    # Explicitly check for False (not None, not True)
+                    is_hwid_unlimited = sub_info.get('convertedUserInfo', {}).get('isHwidLimited') == False
+            
+            if is_hwid_unlimited:
+                display_limit = "∞"
+            else:
+                # Standard limit logic
+                raw_limit = found_user_data.get('hwidDeviceLimit')
+                display_limit = str(raw_limit) if raw_limit is not None else "2"
+            
+            t_devices = l10n.format_value("profile-devices", {"count": device_count, "limit": display_limit})
+        except Exception as e:
+            logger.error("hwid_fetch_error_main", error=str(e), rw_uuid=rw_uuid)
+            t_devices = "" # Silent fail if API error
 
         traffic_info = f"\n{t_tariff}\n{t_traffic}\n{t_devices}\n{t_link}"
 
@@ -862,25 +888,37 @@ async def generate_profile_content(user_id, session, l10n):
 
             t_link = l10n.format_value("profile-link", {"link": formatted_link})
             
-            # Device count for additional accounts (get full details for HWID limit status)
+            # Device count for additional accounts (Fetch full sub info for HWID status)
             acc_uuid = acc.get('uuid')
             try:
-                acc_full = await api.get_user(acc_uuid)
                 acc_devices = await api.get_user_devices(acc_uuid)
                 acc_device_count = len(acc_devices)
                 
-                # Check if HWID limit is disabled for additional accounts
-                acc_is_hwid_limited_ui = acc_full.get('convertedUserInfo', {}).get('isHwidLimited', True)
-                acc_is_hwid_limit_null = acc_full.get('hwidDeviceLimit') is None
+                # Robust shortUuid extraction from link to get isHwidLimited flag
+                short_id_match = re.search(r'/sub/([a-zA-Z0-9_-]+)', link)
+                short_uuid = short_id_match.group(1) if short_id_match else None
                 
-                if not acc_is_hwid_limited_ui or acc_is_hwid_limit_null:
+                is_hwid_unlimited = False
+                if short_uuid:
+                    try:
+                        sub_info = await api.get_sub_info(short_uuid)
+                        if sub_info:
+                            # Explicitly check for False (not None, not True)
+                            is_hwid_unlimited = sub_info.get('convertedUserInfo', {}).get('isHwidLimited') == False
+                    except: pass
+                
+                if is_hwid_unlimited:
                     acc_display_limit = "∞"
                 else:
-                    acc_display_limit = str(acc_full.get('multiLogin', 2) or 2)
+                    # Standard limit logic (Fetch full user for multiLogin/hwidDeviceLimit if needed)
+                    acc_full = await api.get_user(acc_uuid)
+                    raw_limit = acc_full.get('hwidDeviceLimit')
+                    acc_display_limit = str(raw_limit) if raw_limit is not None else "2"
                 
                 t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_display_limit})
-            except Exception:
-                # Fallback to lite data if get_user fails
+            except Exception as e:
+                # Basic fallback
+                logger.error("hwid_fetch_error_additional", error=str(e), acc_uuid=acc_uuid)
                 acc_devices = await api.get_user_devices(acc_uuid)
                 t_devices = l10n.format_value("profile-devices", {"count": len(acc_devices), "limit": acc.get('multiLogin', 2) or 2})
 

@@ -15,7 +15,7 @@ btn-support = 🆘 Поддержка (в т.ч. проекта 🙃)
 btn-instruction = 📖 Инструкция
 btn-disclaimer = ⚖️ О проекте
 btn-accept-disclaimer = ✅ Принять условия
-btn-trial = 🎁 3 дня бесплатно!
+btn-trial = 🔌 Подключиться (3 дня бесплатно!)
 
 profile-title = 👤 Ваш профиль
 profile-id = 👤 Tg ID: { $id }
