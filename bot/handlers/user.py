@@ -298,9 +298,8 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                         acc_device_count = len(acc_devices)
                         
                         # Robust shortUuid extraction from subscriptionUrl to get isHwidLimited flag
-                        # Regex is safer for URLs with params or trailing slashes
-                        short_id_match = re.search(r'/sub/([a-zA-Z0-9_-]+)', link)
-                        short_uuid = short_id_match.group(1) if short_id_match else None
+                        # We take the last part of the path, which works for both /sub/ID and /ID formats
+                        short_uuid = link.rstrip("/").split("/")[-1] if link else None
                         
                         is_hwid_unlimited = False
                         if short_uuid:
@@ -315,7 +314,8 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                             # Standard limit logic
                             acc_full = await api.get_user(acc_uuid)
                             raw_limit = acc_full.get('hwidDeviceLimit')
-                            acc_display_limit = str(raw_limit) if raw_limit is not None else "2"
+                            # Default to 2 if limit is null or 0 (unless unlimited)
+                            acc_display_limit = str(raw_limit) if raw_limit else "2"
                         
                         t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_display_limit})
                     except Exception as e:
@@ -794,8 +794,7 @@ async def generate_profile_content(user_id, session, l10n):
             device_count = len(devices)
             
             # Robust shortUuid extraction from main_link to get isHwidLimited flag
-            short_id_match = re.search(r'/sub/([a-zA-Z0-9_-]+)', main_link)
-            short_uuid = short_id_match.group(1) if short_id_match else None
+            short_uuid = main_link.rstrip("/").split("/")[-1] if main_link else None
             
             is_hwid_unlimited = False
             if short_uuid:
@@ -809,7 +808,8 @@ async def generate_profile_content(user_id, session, l10n):
             else:
                 # Standard limit logic
                 raw_limit = found_user_data.get('hwidDeviceLimit')
-                display_limit = str(raw_limit) if raw_limit is not None else "2"
+                # Default to 2 if limit is null or 0 (unless unlimited)
+                display_limit = str(raw_limit) if raw_limit else "2"
             
             t_devices = l10n.format_value("profile-devices", {"count": device_count, "limit": display_limit})
         except Exception as e:
@@ -895,8 +895,7 @@ async def generate_profile_content(user_id, session, l10n):
                 acc_device_count = len(acc_devices)
                 
                 # Robust shortUuid extraction from link to get isHwidLimited flag
-                short_id_match = re.search(r'/sub/([a-zA-Z0-9_-]+)', link)
-                short_uuid = short_id_match.group(1) if short_id_match else None
+                short_uuid = link.rstrip("/").split("/")[-1] if link else None
                 
                 is_hwid_unlimited = False
                 if short_uuid:
@@ -913,7 +912,8 @@ async def generate_profile_content(user_id, session, l10n):
                     # Standard limit logic (Fetch full user for multiLogin/hwidDeviceLimit if needed)
                     acc_full = await api.get_user(acc_uuid)
                     raw_limit = acc_full.get('hwidDeviceLimit')
-                    acc_display_limit = str(raw_limit) if raw_limit is not None else "2"
+                    # Default to 2 if limit is null or 0 (unless unlimited)
+                    acc_display_limit = str(raw_limit) if raw_limit else "2"
                 
                 t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_display_limit})
             except Exception as e:
