@@ -755,8 +755,15 @@ async def generate_profile_content(user_id, session, l10n):
         # Device count
         devices = await api.get_user_devices(rw_uuid)
         device_count = len(devices)
-        device_limit = found_user_data.get('multiLogin', 2) or 2
-        t_devices = l10n.format_value("profile-devices", {"count": device_count, "limit": device_limit})
+        
+        # Check if HWID limit is disabled
+        is_hwid_limited = found_user_data.get('convertedUserInfo', {}).get('isHwidLimited', True)
+        if not is_hwid_limited:
+            display_limit = "∞"
+        else:
+            display_limit = str(found_user_data.get('multiLogin', 2) or 2)
+            
+        t_devices = l10n.format_value("profile-devices", {"count": device_count, "limit": display_limit})
 
         traffic_info = f"\n{t_tariff}\n{t_traffic}\n{t_devices}\n{t_link}"
 
@@ -834,8 +841,15 @@ async def generate_profile_content(user_id, session, l10n):
             acc_uuid = acc.get('uuid')
             acc_devices = await api.get_user_devices(acc_uuid)
             acc_device_count = len(acc_devices)
-            acc_device_limit = acc.get('multiLogin', 2) or 2
-            t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_device_limit})
+            
+            # Check if HWID limit is disabled for additional accounts
+            acc_is_hwid_limited = acc.get('convertedUserInfo', {}).get('isHwidLimited', True)
+            if not acc_is_hwid_limited:
+                acc_display_limit = "∞"
+            else:
+                acc_display_limit = str(acc.get('multiLogin', 2) or 2)
+
+            t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_display_limit})
 
             item_text = l10n.format_value("profile-account-item", {
                 "username": u_name, 
