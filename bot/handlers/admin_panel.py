@@ -1181,13 +1181,18 @@ async def process_routing_btn_title(message: types.Message, state: FSMContext, l
 
 @router.message(AdminStates.routing_add_btn_url)
 async def process_routing_btn_url(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+    url = message.text.strip()
+    if not url.startswith("happ://"):
+        await message.answer("❌ Ошибка: Ссылка должна начинаться с `happ://` (например, `happ://routing/config`)")
+        return
+
+    full_url = f"https://go.cyni.cc/?url={url}"
     data = await state.get_data()
     title = data.get("btn_title")
-    url = message.text
     
     settings = await SettingsService.get_routing_settings()
     if "buttons" not in settings: settings["buttons"] = []
-    settings["buttons"].append({"title": title, "url": url})
+    settings["buttons"].append({"title": title, "url": full_url})
     
     await SettingsService.update_routing_settings(settings)
     await message.answer(l10n.format_value("admin-routing-success"))

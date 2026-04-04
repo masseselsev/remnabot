@@ -103,11 +103,12 @@ trial-friend-failed = ❌ Failed to create an account for your friend. Please co
 profile-routing-separator = ────────────────────
 admin-btn-routing = 🌐 Routing Settings
 admin-routing-title = 🌐 Routing Configuration Management
-admin-routing-desc = <b>Current Description:</b>{"\n"}{ $desc }
+admin-routing-desc = <b>Current Description:</b> { $desc }
 admin-routing-btns-count = <b>Buttons added:</b> { $count }
 admin-routing-btn-edit-desc = 📝 Edit Description
 admin-routing-btn-add-button = ➕ Add Button
 admin-routing-btn-clear-buttons = 🗑️ Clear All Buttons
+admin-btn-back = 🔙 Back
 admin-routing-input-desc = Enter new description text for the routing section:
 admin-routing-input-btn-title = Enter localizable title for the new button:
 admin-routing-input-btn-url = Enter URL for the button (e.g., https://go.cyni.cc/?url=happ://routing/...):

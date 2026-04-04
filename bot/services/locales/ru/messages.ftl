@@ -221,12 +221,14 @@ lang-en = 🇺🇸 English
 profile-routing-separator = ────────────────────
 admin-btn-routing = 🌐 Настройки роутинга
 admin-routing-title = 🌐 Управление настройками роутинга
-admin-routing-desc = <b>Текущее описание:</b>{"\n"}{ $desc }
+admin-routing-desc = <b>Текущее описание:</b> { $desc }
 admin-routing-btns-count = <b>Кнопок добавлено:</b> { $count }
 admin-routing-btn-edit-desc = 📝 Изменить описание
 admin-routing-btn-add-button = ➕ Добавить кнопку
 admin-routing-btn-clear-buttons = 🗑️ Удалить все кнопки
+admin-btn-back = 🔙 Назад
 admin-routing-input-desc = Введите новый текст описания для раздела роутинга:
+admin-routing-input-desc-ru = Введите новый текст описания для раздела роутинга:
 admin-routing-input-btn-title = Введите название для новой кнопки:
 admin-routing-input-btn-url = Введите URL для кнопки (например, https://go.cyni.cc/?url=happ://routing/...):
 admin-routing-success = ✅ Настройки обновлены!
