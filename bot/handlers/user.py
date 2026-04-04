@@ -748,7 +748,6 @@ async def generate_profile_content(user_id, session, l10n):
                 
                 msk_tz = timezone(timedelta(hours=3))
                 date_str = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
-                
                 now_utc = datetime.now(timezone.utc)
                 if dt > now_utc:
                     formatted_status = l10n.format_value("profile-expiry", {"date": date_str})
@@ -761,18 +760,18 @@ async def generate_profile_content(user_id, session, l10n):
         limit_bytes = found_user_data.get('trafficLimitBytes') or 0
         used_bytes = found_user_data.get('userTraffic', {}).get('usedTrafficBytes') or 0
         
-        limit_gb = round(int(limit_bytes) / (1024**3), 1)
-        used_gb = round(int(used_bytes) / (1024**3), 2)
+        limit_gb = int(round(int(limit_bytes) / (1024**3), 0))
+        used_gb = int(round(int(used_bytes) / (1024**3), 0))
         
         percent = 0
         if limit_bytes > 0:
-            percent = round((used_bytes / limit_bytes) * 100, 1)
+            percent = round((used_bytes / limit_bytes) * 100, 0)
             
         bar_str = get_traffic_bar(percent)
 
             
         t_tariff = l10n.format_value("profile-tariff", {"name": tariff_name})
-        t_traffic = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "percent": percent, "bar": bar_str})
+        t_traffic = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "bar": bar_str})
         
         traffic_info = f"\n{t_tariff}\n{t_traffic}"
         

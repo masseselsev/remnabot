@@ -24,7 +24,7 @@ profile-status = Статус: { $status }
 # Shared components
 profile-expiry = 📅 Активна до { $date }
 profile-expiry-caption = Активна до
-profile-traffic = 📊 Трафик: { $used } / { $limit } GB ({ $percent }%) { $bar }
+profile-traffic = 📊 Трафик: { $used } / { $limit } GB { $bar }
 profile-devices = 📱 Устройств: { $count } / { $limit }
 profile-link = 🔗 Ссылка: { $link }
 
