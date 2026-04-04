@@ -29,11 +29,13 @@ class RemnawaveAPI:
                 async with session.request(method, url, headers=self.headers, json=data, params=params) as response:
                     raw_text = await response.text()
                     if not response.ok:
-                        logger.error("remnawave_api_fail", 
-                                     method=method, 
-                                     url=url,
-                                     status=response.status, 
-                                     body=raw_text)
+                        log_level = logger.warning if response.status == 404 else logger.error
+                        log_level("remnawave_api_fail", 
+                                  method=method, 
+                                  url=url,
+                                  status=response.status, 
+                                  body=raw_text)
+                    
                     response.raise_for_status()
                     
                     try:
@@ -48,6 +50,10 @@ class RemnawaveAPI:
                         return res.get('response') or res.get('data') or res
                     return res
 
+            except aiohttp.ClientResponseError as e:
+                if e.status != 404:
+                    logger.error("remnawave_api_exception", method=method, endpoint=endpoint, status=e.status, error=str(e))
+                raise e
             except Exception as e:
                 logger.error("remnawave_api_exception", method=method, endpoint=endpoint, error=str(e))
                 raise e
