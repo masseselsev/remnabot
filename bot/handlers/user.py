@@ -14,7 +14,7 @@ import re
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.services.settings import SettingsService
-from bot.utils.crypto import get_crypto_link
+from bot.utils.crypto import get_crypto_link, get_routing_redirect_url
 import structlog
 
 router = Router()
@@ -1420,12 +1420,8 @@ async def process_delete_device_wrapper(callback: types.CallbackQuery, session, 
 
 @router.callback_query(F.data == "profile_routing")
 async def process_routing_submenu(callback: types.CallbackQuery, session: AsyncSession, l10n: FluentLocalization):
-    from bot.services.settings import SettingsService
-    from bot.utils.crypto import get_routing_redirect_url
-    from bot.database.models import User
-    
     # Get user's last routing choice
-    stmt = select(User).where(User.id == callback.from_user.id)
+    stmt = select(models.User).where(models.User.id == callback.from_user.id)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
     last_url = user.last_routing_url if user else None
