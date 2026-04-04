@@ -230,7 +230,7 @@ admin-btn-back = 🔙 Назад
 admin-routing-input-desc = Введите новый текст описания для раздела роутинга:
 admin-routing-input-desc-ru = Введите новый текст описания для раздела роутинга:
 admin-routing-input-btn-title = Введите название для новой кнопки:
-admin-routing-input-btn-url = Введите URL для кнопки (например, https://go.cyni.cc/?url=happ://routing/...):
+admin-routing-input-btn-url = Введите URL для кнопки (например, happ://routing/...):
 admin-routing-success = ✅ Настройки обновлены!
 
 btn-routing-settings = 🌐 Настройки роутинга
