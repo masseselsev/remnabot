@@ -948,7 +948,7 @@ async def generate_profile_content(user_id, session, l10n):
             
         if additional_items:
             additional_info = "\n\n" + l10n.format_value("profile-additional-accounts") + "\n"
-            additional_info += "\n──────────────────────────\n".join(additional_items)
+            additional_info += "\n──\n".join(additional_items)
 
     from bot.services.settings import SettingsService
     routing = await SettingsService.get_routing_settings()
