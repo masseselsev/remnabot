@@ -66,8 +66,11 @@ async def main():
         await bot.set_webhook(config.webhook_url, certificate=certificate, drop_pending_updates=True)
         
         app = web.Application()
-        # Register Redirect Webhook
-        app.router.add_get("/r", handle_routing_redirect)
+        # Register Redirect Webhook relative to webhook_path
+        # Remove trailing slash from path for safe joining
+        base_path = webhook_path.rstrip("/")
+        app.router.add_get(base_path + "/r", handle_routing_redirect)
+        
         # Register Payments Webhook
         app.router.add_post("/payment/webhook/yookassa", handle_yookassa)
         
