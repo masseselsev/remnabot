@@ -113,6 +113,8 @@ admin-routing-input-btn-title = Enter localizable title for the new button:
 admin-routing-input-btn-url = Enter URL for the button (e.g., https://go.cyni.cc/?url=happ://routing/...):
 admin-routing-success = ✅ Settings updated successfully!
 
+btn-routing-settings = 🌐 Routing Settings
+
 trial-instruction-title = 📖 <b>Setup Instructions</b>
 
 trial-instruction-profile-hint = Click the 👤 <b>Profile</b> button to see your active subscriptions and links.

@@ -231,6 +231,8 @@ admin-routing-input-btn-title = Введите название для ново�
 admin-routing-input-btn-url = Введите URL для кнопки (например, https://go.cyni.cc/?url=happ://routing/...):
 admin-routing-success = ✅ Настройки обновлены!
 
+btn-routing-settings = 🌐 Настройки роутинга
+
 lang-changed-msg = 
     ✅ Язык успешно изменен на русский.
     Меню пользователя обновлено.

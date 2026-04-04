@@ -952,20 +952,13 @@ async def generate_profile_content(user_id, session, l10n):
 
     from bot.services.settings import SettingsService
     routing = await SettingsService.get_routing_settings()
-    routing_desc = routing.get("description")
     routing_btns = routing.get("buttons") or []
     
-    routing_text = ""
-    if routing_desc:
-        separator = l10n.format_value("profile-routing-separator")
-        routing_text = f"\n\n{separator}\n{routing_desc}"
-
     text = (
         f"{l10n.format_value('profile-id', {'id': user.id})}\n"
         f"{formatted_status}"
         f"{traffic_info}"
         f"{additional_info}"
-        f"{routing_text}"
     )
     
     # Base buttons
@@ -974,10 +967,12 @@ async def generate_profile_content(user_id, session, l10n):
         [types.InlineKeyboardButton(text="🌐 Language / Язык", callback_data="change_lang")]
     ]
     
-    # Add routing buttons
-    for btn in routing_btns:
-        if btn.get("title") and btn.get("url"):
-            keyboard_grid.append([types.InlineKeyboardButton(text=btn["title"], url=btn["url"])])
+    # Add routing submenu button if any buttons exist
+    if routing_btns:
+        keyboard_grid.append([types.InlineKeyboardButton(
+            text=l10n.format_value("btn-routing-settings"), 
+            callback_data="profile_routing"
+        )])
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=keyboard_grid)
     
@@ -1421,6 +1416,24 @@ async def process_delete_device_wrapper(callback: types.CallbackQuery, session, 
             data=f"dev_acc_{target_uuid}"
         )
      await show_devices_list(cb, session, l10n)
+
+@router.callback_query(F.data == "profile_routing")
+async def process_routing_submenu(callback: types.CallbackQuery, l10n: FluentLocalization):
+    from bot.services.settings import SettingsService
+    routing = await SettingsService.get_routing_settings()
+    routing_desc = routing.get("description") or "Select a routing configuration:"
+    routing_btns = routing.get("buttons") or []
+    
+    keyboard_grid = []
+    for btn in routing_btns:
+        if btn.get("title") and btn.get("url"):
+            keyboard_grid.append([types.InlineKeyboardButton(text=btn["title"], url=btn["url"])])
+            
+    keyboard_grid.append([types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="back_profile")])
+    kb = types.InlineKeyboardMarkup(inline_keyboard=keyboard_grid)
+    
+    await callback.message.edit_text(routing_desc, reply_markup=kb, parse_mode="HTML", disable_web_page_preview=True)
+    await callback.answer()
 
 @router.callback_query(F.data == "back_profile")
 async def back_to_profile(callback: types.CallbackQuery, session, l10n: FluentLocalization):
