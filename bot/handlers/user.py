@@ -2,6 +2,7 @@ from aiogram import Router, types, F
 from aiogram.filters import CommandStart, StateFilter
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
 from bot.database.core import get_session
 from bot.database import models
 from bot.config import config
@@ -1418,16 +1419,34 @@ async def process_delete_device_wrapper(callback: types.CallbackQuery, session, 
      await show_devices_list(cb, session, l10n)
 
 @router.callback_query(F.data == "profile_routing")
-async def process_routing_submenu(callback: types.CallbackQuery, l10n: FluentLocalization):
+async def process_routing_submenu(callback: types.CallbackQuery, session: AsyncSession, l10n: FluentLocalization):
     from bot.services.settings import SettingsService
+    from bot.utils.crypto import get_routing_redirect_url
+    from bot.database.models import User
+    
+    # Get user's last routing choice
+    stmt = select(User).where(User.id == callback.from_user.id)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+    last_url = user.last_routing_url if user else None
+    
     routing = await SettingsService.get_routing_settings()
     routing_desc = routing.get("description") or "Select a routing configuration:"
     routing_btns = routing.get("buttons") or []
     
     keyboard_grid = []
-    for btn in routing_btns:
+    for idx, btn in enumerate(routing_btns):
         if btn.get("title") and btn.get("url"):
-            keyboard_grid.append([types.InlineKeyboardButton(text=btn["title"], url=btn["url"])])
+            title = btn["title"]
+            url = btn["url"]
+            
+            # Highlight last used
+            if last_url == url:
+                title = f"✅ {title}"
+            
+            # Use signed redirect link for tracking
+            redirect_url = get_routing_redirect_url(callback.from_user.id, idx)
+            keyboard_grid.append([types.InlineKeyboardButton(text=title, url=redirect_url)])
             
     keyboard_grid.append([types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="back_profile")])
     kb = types.InlineKeyboardMarkup(inline_keyboard=keyboard_grid)

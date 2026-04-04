@@ -9,6 +9,7 @@ from bot.middlewares.i18n import I18nMiddleware
 from bot.middlewares.db import DbSessionMiddleware
 from bot.middlewares.logging import StructLoggingMiddleware
 from bot.webhooks.payments import handle_yookassa
+from bot.webhooks.redirect import handle_routing_redirect
 
 from bot.logging_setup import setup_logging
 
@@ -65,6 +66,8 @@ async def main():
         await bot.set_webhook(config.webhook_url, certificate=certificate, drop_pending_updates=True)
         
         app = web.Application()
+        # Register Redirect Webhook
+        app.router.add_get("/r", handle_routing_redirect)
         # Register Payments Webhook
         app.router.add_post("/payment/webhook/yookassa", handle_yookassa)
         

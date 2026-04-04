@@ -28,6 +28,7 @@ class User(Base):
     language_code: Mapped[str] = mapped_column(String(10), default="en")
     
     remnawave_uuid: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    last_routing_url: Mapped[str | None] = mapped_column(String, nullable=True)
     
     # balance field removed
     is_trial_used: Mapped[bool] = mapped_column(Boolean, default=False)
