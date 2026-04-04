@@ -36,6 +36,14 @@ class AdminStates(StatesGroup):
     ch_tar_manual = State()
     ch_tar_confirm = State()
     
+    # User Search
+    search_user_id = State()
+    
+    # Manual Grant Flow
+    prov_username = State()
+    prov_tgid = State()
+    prov_desc = State()
+
     # Welcome Message Settings
     welcome_select_lang = State()
     welcome_input_text = State()
