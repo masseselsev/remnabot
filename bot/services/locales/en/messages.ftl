@@ -101,8 +101,8 @@ trial-friend-failed = ❌ Failed to create an account for your friend. Please co
 
 # Routing Settings
 profile-routing-separator = ────────────────────
-admin-btn-routing = 🛰️ Routing Settings
-admin-routing-title = 🛰️ Routing Configuration Management
+admin-btn-routing = 🔀 Routing Settings
+admin-routing-title = 🔀 Routing Configuration Management
 admin-routing-desc = <b>Current Description:</b> { $desc }
 admin-routing-btns-count = <b>Buttons added:</b> { $count }
 admin-routing-btn-edit-desc = 📝 Edit Description
@@ -127,7 +127,7 @@ admin-routing-input-btn-title = Enter localizable title for the new button:
 admin-routing-input-btn-url = Enter URL for the button (e.g., happ://routing/...):
 admin-routing-success = ✅ Settings updated successfully!
 
-btn-routing-settings = 🛰️ Routing Settings
+btn-routing-settings = 🔀 Routing Settings
 
 trial-instruction-title = 📖 <b>Setup Instructions</b>
 
