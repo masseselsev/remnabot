@@ -38,24 +38,6 @@ class User(Base):
     
     orders: Mapped[list["Order"]] = relationship(back_populates="user")
 
-class Tariff(Base):
-    __tablename__ = "tariffs"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100))
-    description: Mapped[str | None] = mapped_column(String, nullable=True)
-    
-    price_rub: Mapped[float] = mapped_column(Float, default=0.0)
-    price_stars: Mapped[int] = mapped_column(Integer, default=0)
-    price_usd: Mapped[float] = mapped_column(Float, default=0.0)
-    
-    duration_days: Mapped[int] = mapped_column(Integer)
-    traffic_limit_gb: Mapped[int | None] = mapped_column(Integer, nullable=True) # None = Unlimited
-    squad_uuid: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    
-    is_trial: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-
 class Promocode(Base):
     __tablename__ = "promocodes"
 
@@ -74,7 +56,7 @@ class Order(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    tariff_id: Mapped[int] = mapped_column(ForeignKey("tariffs.id"))
+    tariff_id: Mapped[int | None] = mapped_column(ForeignKey("tariffs.id"), nullable=True)
     
     payment_provider: Mapped[PaymentProvider] = mapped_column(SAEnum(PaymentProvider))
     invoice_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -87,7 +69,7 @@ class Order(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
     user: Mapped["User"] = relationship(back_populates="orders")
-    tariff: Mapped["Tariff"] = relationship()
+    tariff: Mapped["Tariff | None"] = relationship()
 
 class KeyValue(Base):
     __tablename__ = "key_value"
@@ -107,8 +89,8 @@ class SupportMessage(Base):
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-class SpecialTariff(Base):
-    __tablename__ = "special_tariffs"
+class Tariff(Base):
+    __tablename__ = "tariffs"
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String, unique=True)

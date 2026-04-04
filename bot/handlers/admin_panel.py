@@ -23,31 +23,18 @@ class AdminStates(StatesGroup):
     edit_trial_traffic = State()
     edit_trial_plan = State()
     
-    # Custom Plans
-    cp_name = State()
-    cp_squad = State()
-    cp_traffic = State()
-    cp_duration = State()
-    cp_tag = State()
-    
-    # Provisioning
-    prov_username = State()
-    prov_tgid = State()
-    prov_desc = State()
-    prov_confirm = State()
-
-    # User Search
-    search_user_id = State()
-
-    # Standard Tariffs
+    # Tariffs (formerly Special Tariffs / Custom Plans)
     t_name = State()
-    t_price_rub = State()
-    t_price_stars = State()
-    t_price_usd = State()
-    t_days = State()
-    t_traffic = State()
     t_squad = State()
-    t_grant_id = State()
+    t_traffic = State()
+    t_duration = State()
+    t_tag = State()
+    
+    # Change User Tariff Wizard
+    ch_tar_select = State()
+    ch_tar_dur = State()
+    ch_tar_manual = State()
+    ch_tar_confirm = State()
     
     # Welcome Message Settings
     welcome_select_lang = State()
@@ -89,7 +76,6 @@ async def get_main_kb(l10n: FluentLocalization):
     return types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-tariffs"), callback_data="admin_tariffs_list")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-trial"), callback_data="admin_trial")],
-        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-cp"), callback_data="admin_cp_list")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-search-user"), callback_data="admin_search_user")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-promos"), callback_data="admin_promos_list")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-welcome"), callback_data="admin_welcome_mgmt")],
@@ -288,6 +274,7 @@ async def admin_search_user_process(message: types.Message, state: FSMContext, s
         uuid = acc.get('uuid')
         uname = acc.get('username')
         kb_rows.append([types.InlineKeyboardButton(text=f"📱 Devices: {uname}", callback_data=f"adm_dacc_{uuid}")])
+        kb_rows.append([types.InlineKeyboardButton(text=f"🔄 Сменить тариф: {uname}", callback_data=f"adm_chtar_{uuid}")])
         
     kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_menu")])
 
@@ -508,74 +495,72 @@ async def set_squad(message: types.Message, state: FSMContext, l10n: FluentLocal
     await message.answer(l10n.format_value("admin-set-squad-success", {"val": message.text}))
     await cmd_admin(message, state, l10n)
 
-# --- Custom Plans (Special Tariffs) ---
+# --- Tariffs Management (replacing old Special Tariffs) ---
 
-@router.callback_query(F.data == "admin_cp_list")
-async def cp_list(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
-    stmt = select(models.SpecialTariff).order_by(models.SpecialTariff.id)
+@router.callback_query(F.data == "admin_tariffs_list")
+async def tariff_list(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
+    stmt = select(models.Tariff).order_by(models.Tariff.id)
     result = await session.execute(stmt)
     tariffs = result.scalars().all()
     
     kb_rows = []
     for t in tariffs:
-        kb_rows.append([types.InlineKeyboardButton(text=f"💎 {t.name}", callback_data=f"cp_view_{t.id}")])
+        kb_rows.append([types.InlineKeyboardButton(text=f"💎 {t.name}", callback_data=f"t_view_{t.id}")])
     
-    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("admin-cp-create-btn"), callback_data="cp_create")])
+    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("admin-cp-create-btn"), callback_data="t_create")])
     kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_menu")])
     
     text = f"{l10n.format_value('admin-cp-title')}\n{l10n.format_value('admin-cp-list-desc')}"
     await callback.message.edit_text(text, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="Markdown")
 
-# Create Wizard
+@router.callback_query(F.data == "t_create")
+async def t_start_create(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    await state.set_state(AdminStates.t_name)
+    await callback.message.edit_text(l10n.format_value("admin-cp-create-step1"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_tariffs_list")]]), parse_mode="Markdown")
 
-@router.callback_query(F.data == "cp_create")
-async def cp_start_create(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
-    await state.set_state(AdminStates.cp_name)
-    await callback.message.edit_text(l10n.format_value("admin-cp-create-step1"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_cp_list")]]), parse_mode="Markdown")
-
-@router.message(AdminStates.cp_name)
-async def cp_set_name(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+@router.message(AdminStates.t_name)
+async def t_set_name(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     await state.update_data(name=message.text)
-    await state.set_state(AdminStates.cp_squad)
+    await state.set_state(AdminStates.t_squad)
     await message.answer(l10n.format_value("admin-cp-create-step2"))
 
-@router.message(AdminStates.cp_squad)
-async def cp_set_squad(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+@router.message(AdminStates.t_squad)
+async def t_set_squad(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     await state.update_data(squad=message.text.strip())
-    await state.set_state(AdminStates.cp_traffic)
+    await state.set_state(AdminStates.t_traffic)
     await message.answer(l10n.format_value("admin-cp-create-step3"))
 
-@router.message(AdminStates.cp_traffic)
-async def cp_set_traffic(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+@router.message(AdminStates.t_traffic)
+async def t_set_traffic(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     try:
-        val = float(message.text)
-        await state.update_data(traffic=val)
-        await state.set_state(AdminStates.cp_duration)
+        limit = float(message.text.strip().replace(",", "."))
+        await state.update_data(traffic=limit)
+        await state.set_state(AdminStates.t_duration)
         await message.answer(l10n.format_value("admin-cp-create-step4"))
     except ValueError:
-        await message.answer(l10n.format_value("admin-cp-val-error"))
+        await message.answer(l10n.format_value("admin-cp-val-number"))
 
-@router.message(AdminStates.cp_duration)
-async def cp_set_duration(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+@router.message(AdminStates.t_duration)
+async def t_set_duration(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     try:
-        val = int(message.text)
-        await state.update_data(duration=val)
-        await state.set_state(AdminStates.cp_tag)
+        dur = int(message.text.strip())
+        await state.update_data(duration=dur)
+        await state.set_state(AdminStates.t_tag)
         await message.answer(l10n.format_value("admin-cp-create-step5"))
     except ValueError:
-        await message.answer(l10n.format_value("admin-cp-val-error"))
+        await message.answer(l10n.format_value("admin-cp-val-int"))
 
-
-
-@router.message(AdminStates.cp_tag)
-async def cp_finish_create(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+@router.message(AdminStates.t_tag)
+async def t_set_tag(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
     tag = message.text.strip()
-    if tag == "0": tag = None
-    
+    if tag.lower() in ["none", "0"]:
+        tag = None
+        
     data = await state.get_data()
+    edit_id = data.get('edit_tariff_id')
     
-    if data.get('edit_tariff_id'):
-        tariff = await session.get(models.SpecialTariff, data['edit_tariff_id'])
+    if edit_id:
+        tariff = await session.get(models.Tariff, edit_id)
         if tariff:
             tariff.name = data['name']
             tariff.squad_uuid = data['squad']
@@ -585,7 +570,7 @@ async def cp_finish_create(message: types.Message, state: FSMContext, session, l
             await session.commit()
             await message.answer(l10n.format_value("admin-cp-created", {"name": tariff.name}))
     else:
-        new_tariff = models.SpecialTariff(
+        new_tariff = models.Tariff(
             name=data['name'],
             squad_uuid=data['squad'],
             traffic_gb=data['traffic'],
@@ -599,30 +584,30 @@ async def cp_finish_create(message: types.Message, state: FSMContext, session, l
     await state.update_data(edit_tariff_id=None)
     await cmd_admin(message, state, l10n)
 
-@router.callback_query(F.data.startswith("cp_edit_"))
-async def cp_edit_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+@router.callback_query(F.data.startswith("t_edit_"))
+async def t_edit_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
     try:
         tid = int(callback.data.split("_")[2])
         await state.update_data(edit_tariff_id=tid)
-        await cp_start_create(callback, state, l10n)
+        await t_start_create(callback, state, l10n)
     except:
         pass
 
 # View Tariff
 
-@router.callback_query(F.data.startswith("cp_view_"))
-async def cp_view(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
+@router.callback_query(F.data.startswith("t_view_"))
+async def t_view(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
     try:
         tariff_id = int(callback.data.split("_")[2])
     except (IndexError, ValueError):
         await callback.answer(l10n.format_value("admin-invalid-id"))
         return
 
-    tariff = await session.get(models.SpecialTariff, tariff_id)
+    tariff = await session.get(models.Tariff, tariff_id)
     
     if not tariff:
         await callback.answer(l10n.format_value("admin-cp-not-found"))
-        await cp_list(callback, state, session, l10n)
+        await tariff_list(callback, state, session, l10n)
         return
 
     dur_display = "∞" if tariff.duration_months == 0 else f"{tariff.duration_months} {l10n.format_value('admin-month-short')}"
@@ -639,43 +624,216 @@ async def cp_view(callback: types.CallbackQuery, state: FSMContext, session, l10
     )
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-grant"), callback_data=f"cp_grant_{tariff.id}")],
-        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-edit"), callback_data=f"cp_edit_{tariff.id}")],
-        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-delete"), callback_data=f"cp_delete_{tariff.id}")],
-        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_cp_list")]
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-grant"), callback_data=f"t_grant_{tariff.id}")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-edit"), callback_data=f"t_edit_{tariff.id}")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-delete"), callback_data=f"t_delete_{tariff.id}")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_tariffs_list")]
     ])
     
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
 
-@router.callback_query(F.data.startswith("cp_delete_"))
-async def cp_delete(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
+@router.callback_query(F.data.startswith("t_delete_"))
+async def t_delete(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
     tariff_id = int(callback.data.split("_")[2])
-    stmt = delete(models.SpecialTariff).where(models.SpecialTariff.id == tariff_id)
+    stmt = delete(models.Tariff).where(models.Tariff.id == tariff_id)
     await session.execute(stmt)
     await session.commit()
     await callback.answer(l10n.format_value("admin-deleted"))
-    await cp_list(callback, state, session, l10n)
+    await tariff_list(callback, state, session, l10n)
 
-# Grant Wizard
+# --- Change User Tariff Flow ---
 
-@router.callback_query(F.data.startswith("cp_grant_"))
-async def cp_grant_start(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
+@router.callback_query(F.data.startswith("adm_chtar_"))
+async def admin_change_tariff_start(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
+    user_uuid = callback.data.split("_")[2]
+    await state.update_data(ch_uuid=user_uuid)
+    
+    # Show list of available tariffs
+    stmt = select(models.Tariff).order_by(models.Tariff.id)
+    result = await session.execute(stmt)
+    tariffs = result.scalars().all()
+    
+    kb_rows = []
+    for t in tariffs:
+        kb_rows.append([types.InlineKeyboardButton(text=f"📦 {t.name}", callback_data=f"adm_ch_t_{t.id}")])
+    
+    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="adm_back_user_search")])
+    
+    await callback.message.edit_text(
+        l10n.format_value("admin-ch-tar-select-title"),
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows),
+        parse_mode="Markdown"
+    )
+
+@router.callback_query(F.data.startswith("adm_ch_t_"))
+async def admin_change_tariff_duration(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
+    tariff_id = int(callback.data.split("_")[3])
+    tariff = await session.get(models.Tariff, tariff_id)
+    if not tariff: return
+    
+    await state.update_data(ch_tariff_id=tariff_id)
+    data = await state.get_data()
+    user_uuid = data.get('ch_uuid')
+    
+    kb_rows = [
+        [types.InlineKeyboardButton(text="📅 На год (365 дн)", callback_data="adm_ch_dur_year")],
+        [types.InlineKeyboardButton(text="♾ Навсегда (2099)", callback_data="adm_ch_dur_inf")],
+        [types.InlineKeyboardButton(text="🔢 Ввести вручную (мес)", callback_data="adm_ch_dur_manual")],
+        [types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data=f"adm_chtar_{user_uuid}")]
+    ]
+    
+    await callback.message.edit_text(
+        l10n.format_value("admin-ch-tar-dur-title", {"tariff": tariff.name, "account": user_uuid[:8]}),
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows),
+        parse_mode="Markdown"
+    )
+
+@router.callback_query(F.data.startswith("adm_ch_dur_"))
+async def admin_change_tariff_duration_select(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    dur_type = callback.data.split("_")[3]
+    
+    if dur_type == "manual":
+        await state.set_state(AdminStates.ch_tar_manual)
+        await callback.message.edit_text(
+            l10n.format_value("admin-ch-tar-manual-ask"),
+            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="admin_menu")]])
+        )
+        return
+        
+    await state.update_data(ch_dur_type=dur_type)
+    await admin_change_tariff_confirm_view(callback.message, state, l10n)
+
+@router.message(AdminStates.ch_tar_manual)
+async def admin_change_tariff_manual_input(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+    try:
+        months = int(message.text.strip())
+        if months < 0: raise ValueError
+        await state.update_data(ch_months=months, ch_dur_type="manual")
+        await admin_change_tariff_confirm_view(message, state, l10n)
+    except ValueError:
+        await message.answer(l10n.format_value("admin-error-invalid-number"))
+
+async def admin_change_tariff_confirm_view(message_or_callback_message: types.Message, state: FSMContext, l10n: FluentLocalization):
+    data = await state.get_data()
+    from bot.database import models
+    from bot.database.core import get_session
+    
+    async with get_session() as session:
+        t = await session.get(models.Tariff, data['ch_tariff_id'])
+        
+    dur_type = data['ch_dur_type']
+    dur_str = ""
+    if dur_type == "year": dur_str = "1 Year (365 days)"
+    elif dur_type == "inf": dur_str = "Forever (2099)"
+    else: dur_str = f"{data['ch_months']} months"
+    
+    text = l10n.format_value("admin-ch-tar-confirm-title", {
+        "tg_id": data.get('search_target_id') or "Unknown",
+        "uuid": data['ch_uuid'],
+        "tariff": t.name,
+        "duration": dur_str
+    })
+    
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="✅ Выполнить", callback_data="adm_ch_exec")],
+        [types.InlineKeyboardButton(text="❌ Отмена", callback_data="admin_menu")]
+    ])
+    
+    if isinstance(message_or_callback_message, types.Message):
+         await message_or_callback_message.answer(text, reply_markup=kb, parse_mode="HTML")
+    else:
+         await message_or_callback_message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data == "adm_ch_exec")
+async def admin_change_tariff_execute(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
+    data = await state.get_data()
+    user_uuid = data['ch_uuid']
+    tariff_id = data['ch_tariff_id']
+    dur_type = data['ch_dur_type']
+    tg_id = data.get('search_target_id')
+    
+    t = await session.get(models.Tariff, tariff_id)
+    if not t: return
+    
+    await callback.message.edit_text(l10n.format_value("admin-wait"))
+    
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+    if dur_type == "year":
+        expire_dt = now + timedelta(days=365)
+        dur_display = "1 год"
+    elif dur_type == "inf":
+        expire_dt = datetime(2099, 1, 1, tzinfo=timezone.utc)
+        dur_display = "Навсегда"
+    else:
+        months = data.get('ch_months', 0)
+        days = (months * 30) + (months // 2)
+        expire_dt = now + timedelta(days=days)
+        dur_display = f"{months} мес."
+        
+    try:
+        from bot.services.remnawave import api
+        # 1. Update Remnawave
+        updates = {
+            "trafficLimitBytes": int(t.traffic_gb * 1024 * 1024 * 1024),
+            "trafficLimitStrategy": "MONTH" if t.traffic_gb > 0 else "NO_RESET",
+            "expireAt": expire_dt.isoformat().replace("+00:00", "Z"),
+            "activeInternalSquads": [t.squad_uuid] if t.squad_uuid and t.squad_uuid != "0" else []
+        }
+        if t.tag:
+            updates["tag"] = t.tag
+            
+        await api.update_user(user_uuid, updates)
+        
+        # 2. Success Report
+        await callback.message.edit_text(l10n.format_value("admin-ch-tar-success"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="🔙 В меню", callback_data="admin_menu")]]))
+        
+        # 3. Notify User
+        if tg_id:
+            try:
+                msg = l10n.format_value("admin-ch-tar-notify-user", {"tariff": t.name, "duration": dur_display})
+                await callback.bot.send_message(tg_id, msg, parse_mode="Markdown")
+            except: pass
+            
+        # 4. Notify Admin Group
+        if config.admin_group_id:
+            try:
+                admin_msg = l10n.format_value("admin-ch-tar-notify-admin-group", {
+                    "tg_id": tg_id or "N/A",
+                    "uuid": user_uuid,
+                    "tariff": t.name,
+                    "duration": dur_display,
+                    "admin": f"@{callback.from_user.username or callback.from_user.id}"
+                })
+                await callback.bot.send_message(config.admin_group_id, admin_msg, parse_mode="HTML")
+            except: pass
+            
+    except Exception as e:
+        logger.error("change_tariff_error", error=str(e), user_uuid=user_uuid)
+        await callback.message.edit_text(f"❌ Error: {e}", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text="🔙 Назад", callback_data="admin_menu")]]))
+        
+    await state.clear()
+
+# --- Manual Grant Flow ---
+
+@router.callback_query(F.data.startswith("t_grant_"))
+async def t_grant_start(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
     tariff_id = int(callback.data.split("_")[2])
-    tariff = await session.get(models.SpecialTariff, tariff_id)
+    tariff = await session.get(models.Tariff, tariff_id)
     if not tariff: return
     
     await state.update_data(grant_tariff_id=tariff.id)
     await state.set_state(AdminStates.prov_username)
-    await callback.message.edit_text(l10n.format_value("admin-cp-grant-step1", {"name": tariff.name}), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data=f"cp_view_{tariff.id}")]]), parse_mode="Markdown")
+    await callback.message.edit_text(l10n.format_value("admin-cp-grant-step1", {"name": tariff.name}), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data=f"t_view_{tariff.id}")]]), parse_mode="Markdown")
 
 @router.message(AdminStates.prov_username)
-async def cp_grant_username(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+async def t_grant_username(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     await state.update_data(username=message.text.strip())
     await state.set_state(AdminStates.prov_tgid)
     await message.answer(l10n.format_value("admin-cp-grant-step2"))
 
 @router.message(AdminStates.prov_tgid)
-async def cp_grant_tgid(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+async def t_grant_tgid(message: types.Message, state: FSMContext, l10n: FluentLocalization):
     try:
         val = int(message.text)
         await state.update_data(tgid=val)
@@ -685,13 +843,13 @@ async def cp_grant_tgid(message: types.Message, state: FSMContext, l10n: FluentL
         await message.answer(l10n.format_value("admin-cp-val-error"))
 
 @router.message(AdminStates.prov_desc)
-async def cp_grant_desc(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+async def t_grant_desc(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
     desc = message.text.strip()
     if desc == "0": desc = ""
     await state.update_data(desc=desc)
     
     data = await state.get_data()
-    tariff = await session.get(models.SpecialTariff, data['grant_tariff_id'])
+    tariff = await session.get(models.Tariff, data['grant_tariff_id'])
     
     text = l10n.format_value("admin-cp-grant-confirm", {
         "name": tariff.name,
@@ -701,16 +859,16 @@ async def cp_grant_desc(message: types.Message, state: FSMContext, session, l10n
     })
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-confirm"), callback_data="admin_cp_grant_done")],
-        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-cancel"), callback_data="admin_cp_list")]
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-confirm"), callback_data="t_grant_done")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-cancel"), callback_data="admin_tariffs_list")]
     ])
     
     await message.answer(text, reply_markup=kb, parse_mode="Markdown")
 
-@router.callback_query(F.data == "admin_cp_grant_done")
-async def cp_grant_execute(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
+@router.callback_query(F.data == "t_grant_done")
+async def t_grant_execute(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
     data = await state.get_data()
-    tariff = await session.get(models.SpecialTariff, data['grant_tariff_id'])
+    tariff = await session.get(models.Tariff, data['grant_tariff_id'])
     
     username = data['username']
     tgid = data['tgid']
@@ -718,18 +876,16 @@ async def cp_grant_execute(callback: types.CallbackQuery, state: FSMContext, ses
     
     await callback.message.edit_text(l10n.format_value("admin-wait"))
     
-    # 1. Calc Duration
+    from datetime import datetime, timedelta
     if tariff.duration_months == 0:
         expire_dt = datetime(2099, 2, 19)
     else:
-        # Heuristic: months * 30 + floor(months/2)
         days = (tariff.duration_months * 30) + (tariff.duration_months // 2)
         expire_dt = datetime.utcnow() + timedelta(days=days)
         
     try:
-        # 2. Create User
+        from bot.services.remnawave import api
         resp = await api.create_custom_user(username, desc)
-        # Handle nesting: 'response' -> 'uuid'
         if 'response' in resp:
             uuid = resp['response'].get('uuid') or resp['response'].get('id')
         else:
@@ -738,7 +894,6 @@ async def cp_grant_execute(callback: types.CallbackQuery, state: FSMContext, ses
         if not uuid:
             raise Exception("No UUID in response")
             
-        # 3. Update User
         updates = {
             "trafficLimitBytes": int(tariff.traffic_gb * 1024 * 1024 * 1024),
             "trafficLimitStrategy": "MONTH" if tariff.traffic_gb > 0 else "NO_RESET", 
@@ -753,25 +908,18 @@ async def cp_grant_execute(callback: types.CallbackQuery, state: FSMContext, ses
             
         await api.update_user(uuid, updates)
         
-        # 4. Squad
         if tariff.squad_uuid and tariff.squad_uuid != "0":
-             await api.add_user_to_squad(uuid, tariff.squad_uuid)
+            await api.add_user_to_squad(uuid, tariff.squad_uuid)
              
-        # 5. Local DB (TG ID)
         if tgid > 0:
             user = await session.get(models.User, tgid)
             if not user:
-                # Create
                 user = models.User(id=tgid, username=f"imported_{username}", remnawave_uuid=uuid)
                 session.add(user)
             else:
-                # Update link
                 user.remnawave_uuid = uuid
             await session.commit()
             
-        # 6. Report
-        # 6. Report
-        # Try to get subscription link from response
         sub_link = None
         if 'response' in resp:
              sub_link = resp['response'].get('subscriptionUrl')
@@ -779,7 +927,6 @@ async def cp_grant_execute(callback: types.CallbackQuery, state: FSMContext, ses
              sub_link = resp.get('subscriptionUrl')
              
         if not sub_link:
-            # Fallback if API doesn't return it
             sub_link = f"{config.remnawave_url}/sub/{uuid}"
 
         expire_str = "∞" if tariff.duration_months == 0 else expire_dt.strftime('%d.%m.%Y')
@@ -792,271 +939,12 @@ async def cp_grant_execute(callback: types.CallbackQuery, state: FSMContext, ses
         })
         
         await callback.message.edit_text(msg, parse_mode="Markdown")
-        # Add button "To Menu"
-        kb = types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-to-menu"), callback_data="admin_cp_list")]])
+        kb = types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-to-menu"), callback_data="admin_tariffs_list")]])
         await callback.message.edit_reply_markup(reply_markup=kb)
         
     except Exception as e:
         logger.error("grant_error", error=str(e))
-        await callback.message.edit_text(l10n.format_value("admin-error", {"error": str(e)}), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-to-menu"), callback_data="admin_cp_list")]]))
-
-# --- Standard Tariffs Management ---
-
-@router.callback_query(F.data == "admin_tariffs_list")
-async def admin_tariffs_list(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
-    stmt = select(models.Tariff).order_by(models.Tariff.price_rub)
-    result = await session.execute(stmt)
-    tariffs = result.scalars().all()
-    
-    kb_rows = []
-    for t in tariffs:
-        # 100₽ | 50* | 1.5$
-        curr = f"{int(t.price_rub)}₽/{t.price_stars}⭐️/{t.price_usd}$"
-        kb_rows.append([types.InlineKeyboardButton(text=f"{t.name} ({curr})", callback_data=f"t_view_{t.id}")])
-    
-    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("admin-t-create-btn"), callback_data="t_create")])
-    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_menu")])
-    
-    await callback.message.edit_text(l10n.format_value("admin-t-list-title"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows))
-
-@router.callback_query(F.data == "t_create")
-async def t_create_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
-    await state.set_state(AdminStates.t_name)
-    await callback.message.edit_text(l10n.format_value("admin-t-create-name"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-t-create-cancel"), callback_data="admin_tariffs_list")]]))
-
-@router.message(AdminStates.t_name)
-async def t_set_name(message: types.Message, state: FSMContext, l10n: FluentLocalization):
-    await state.update_data(name=message.text)
-    await state.set_state(AdminStates.t_price_rub)
-    await message.answer(l10n.format_value("admin-t-create-rub"))
-
-@router.message(AdminStates.t_price_rub)
-async def t_set_rub(message: types.Message, state: FSMContext, l10n: FluentLocalization):
-    try:
-        val = float(message.text)
-        await state.update_data(rub=val)
-        await state.set_state(AdminStates.t_price_stars)
-        await message.answer(l10n.format_value("admin-t-create-stars"))
-    except ValueError:
-        await message.answer(l10n.format_value("admin-t-val-number"))
-
-@router.message(AdminStates.t_price_stars)
-async def t_set_stars(message: types.Message, state: FSMContext, l10n: FluentLocalization):
-    try:
-        val = int(message.text)
-        await state.update_data(stars=val)
-        await state.set_state(AdminStates.t_price_usd)
-        await message.answer(l10n.format_value("admin-t-create-usd"))
-    except ValueError:
-        await message.answer(l10n.format_value("admin-t-val-int"))
-
-@router.message(AdminStates.t_price_usd)
-async def t_set_usd(message: types.Message, state: FSMContext, l10n: FluentLocalization):
-    try:
-        val = float(message.text)
-        await state.update_data(usd=val)
-        await state.set_state(AdminStates.t_days)
-        await message.answer(l10n.format_value("admin-t-create-days"))
-    except ValueError:
-        await message.answer(l10n.format_value("admin-t-val-number"))
-
-@router.message(AdminStates.t_days)
-async def t_set_days(message: types.Message, state: FSMContext, l10n: FluentLocalization):
-    try:
-        val = int(message.text)
-        await state.update_data(days=val)
-        await state.set_state(AdminStates.t_traffic)
-        await message.answer(l10n.format_value("admin-t-create-traffic"))
-    except ValueError:
-         await message.answer(l10n.format_value("admin-t-val-int"))
-
-@router.message(AdminStates.t_traffic)
-async def t_set_traffic(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
-    try:
-        limit = int(message.text)
-        await state.update_data(traffic=limit)
-        await state.set_state(AdminStates.t_squad)
-        await message.answer(l10n.format_value("admin-t-ask-squad"))
-    except ValueError:
-        await message.answer(l10n.format_value("admin-t-val-int"))
-
-@router.message(AdminStates.t_squad)
-async def t_set_squad(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
-    try:
-        squad_uuid = message.text.strip()
-        if squad_uuid == "0":
-            squad_uuid = None
-            
-        data = await state.get_data()
-        limit = data['traffic']
-        
-        t = models.Tariff(
-            name=data['name'],
-            price_rub=data['rub'],
-            price_stars=data['stars'],
-            price_usd=data['usd'],
-            duration_days=data['days'],
-            traffic_limit_gb=limit if limit > 0 else None,
-            squad_uuid=squad_uuid,
-            is_trial=False,
-            is_active=True
-        )
-        session.add(t)
-        await session.commit()
-        
-        await message.answer(l10n.format_value("admin-t-created", {"name": t.name}), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-t-list-btn"), callback_data="admin_tariffs_list")]]))
-        await state.clear()
-        
-    except Exception as e:
-        await message.answer(f"Error: {e}")
-
-@router.callback_query(F.data.startswith("t_view_"))
-async def t_view(callback: types.CallbackQuery, state: FSMContext, session, l10n: FluentLocalization):
-    tid = int(callback.data.split("_")[2])
-    t = await session.get(models.Tariff, tid)
-    
-    if not t:
-        await callback.answer(l10n.format_value("admin-cp-not-found"))
-        return
-    
-    # Resolve Squad Name
-    squad_display = await resolve_squads_display(t.squad_uuid)
-        
-    text = (
-        f"{l10n.format_value('admin-t-view-title', {'name': t.name})}\n"
-        f"{l10n.format_value('admin-t-view-prices', {'rub': t.price_rub, 'stars': t.price_stars, 'usd': t.price_usd})}\n"
-        f"{l10n.format_value('admin-t-view-duration', {'days': t.duration_days})}\n"
-        f"{l10n.format_value('admin-t-view-squad', {'squad': squad_display})}\n"
-        f"{l10n.format_value('admin-t-view-traffic', {'traffic': t.traffic_limit_gb or 'Unlimited'})}"
-    )
-    
-    kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text=l10n.format_value("admin-t-btn-grant"), callback_data=f"t_grant_{t.id}")],
-        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-delete"), callback_data=f"t_del_{t.id}")],
-        [types.InlineKeyboardButton(text=l10n.format_value("admin-cp-back-btn"), callback_data="admin_tariffs_list")]
-    ])
-    
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-
-@router.callback_query(F.data.startswith("t_grant_"))
-async def t_grant_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
-    tid = int(callback.data.split("_")[2])
-    await state.update_data(grant_tariff_id=tid)
-    await state.set_state(AdminStates.t_grant_id)
-    await callback.message.answer(l10n.format_value("admin-t-grant-ask"), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-cancel"), callback_data="admin_tariffs_list")]]))
-    await callback.answer()
-
-@router.message(AdminStates.t_grant_id)
-async def t_grant_process(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
-    try:
-        data = await state.get_data()
-        tid = data['grant_tariff_id']
-        target_user_id = int(message.text.strip())
-        
-        # Check user exists, create if not
-        u = await session.get(models.User, target_user_id)
-        if not u:
-            # Create user placeholder
-            u = models.User(id=target_user_id, language_code="en") # Default EN
-            session.add(u)
-            await session.flush()
-
-        tariff = await session.get(models.Tariff, tid)
-        if not tariff:
-            await message.answer(l10n.format_value("admin-error-tariff-not-found"))
-            return
-
-        # Create paid order manually
-        from bot.services.orders import create_order, fulfill_order
-        from bot.services.remnawave import api
-        
-        # Create order with 0 price (gift)
-        order = await create_order(
-            user_id=target_user_id,
-            tariff_id=tid,
-            amount=0.0,
-            provider=models.PaymentProvider.MANUAL,
-            session=session
-        )
-        
-        order.invoice_id = f"manual_grant_{message.from_user.id}_{datetime.utcnow().timestamp()}"
-        await session.commit()
-        
-        # Fulfill
-        success = await fulfill_order(order.id, session)
-        
-        if success:
-             # Refresh user to get remnawave_uuid
-             await session.refresh(u)
-             
-             # Fetch sub link
-             link = "N/A"
-             if u.remnawave_uuid:
-                 try:
-                     rw_user = await api.get_user(u.remnawave_uuid)
-                     user_data = rw_user.get('response', rw_user)
-                     link = user_data.get('subscriptionUrl') or user_data.get('subUrl') or user_data.get('subscription_url') or "Link not found in API"
-                 except Exception as e:
-                     link = f"Error fetching link: {e}"
-             
-             display_username = f" (@{escape(u.username)})" if u.username else ""
-             
-             msg_text = l10n.format_value("admin-t-grant-success-full", {
-                 "tariff": escape(tariff.name),
-                 "user_id": target_user_id,
-                 "username": display_username,
-                 "days": tariff.duration_days,
-                 "traffic": tariff.traffic_limit_gb or "∞",
-                 "link": link
-             })
-             
-             await message.answer(msg_text, parse_mode="HTML")
-             
-             # Notify user
-             try:
-                 await message.bot.send_message(target_user_id, f"🎁 You have been granted a subscription: {tariff.name}!")
-             except:
-                 # User blocked bot or not started
-                 pass
-        else:
-             await message.answer(l10n.format_value("admin-t-grant-error", {"error": "Fulfillment failed"}))
-             
-        await state.clear()
-        
-    except ValueError:
-        await message.answer(l10n.format_value("admin-t-val-int"))
-    except Exception as e:
-        logger.error("grant_tariff_error", error=str(e))
-        await message.answer(l10n.format_value("admin-t-grant-error", {"error": str(e)}))
-    
-    await cmd_admin(message, state, l10n)
-
-from sqlalchemy.exc import IntegrityError
-
-@router.callback_query(F.data.startswith("t_del_"))
-async def t_delete(callback: types.CallbackQuery, session, l10n: FluentLocalization):
-    tid = int(callback.data.split("_")[2])
-    try:
-        # 1. CASCADE: Delete associated orders first
-        # USER REQUESTED: "if tariff is deleted, orders should be too"
-        del_orders_stmt = delete(models.Order).where(models.Order.tariff_id == tid)
-        await session.execute(del_orders_stmt)
-        
-        # 2. Delete tariff
-        stmt = delete(models.Tariff).where(models.Tariff.id == tid)
-        await session.execute(stmt)
-        await session.commit()
-        
-        await callback.answer(l10n.format_value("admin-t-deleted", {"name": "Deleted"}))
-        # Refresh list
-        await callback.message.delete()
-        await cmd_tariffs_list(callback.message, None, session, l10n)
-        
-    except Exception as e:
-        await session.rollback()
-        await callback.answer(f"Error: {e}", show_alert=True)
-
-# --- Promo Codes Management ---
+        await callback.message.edit_text(l10n.format_value("admin-error", {"error": str(e)}), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("admin-cp-btn-to-menu"), callback_data="admin_tariffs_list")]]))
 
 @router.callback_query(F.data == "admin_promos_list")
 async def admin_promos_list(callback: types.CallbackQuery, session, l10n: FluentLocalization):

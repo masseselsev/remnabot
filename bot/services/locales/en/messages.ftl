@@ -258,9 +258,39 @@ admin-success-device-deleted = Device successfully disconnected.
 admin-error-tariff-not-found = Plan not found.
 admin-error-invalid-number = Please enter a valid number.
 
-# Admin Custom Plans (CP)
-admin-cp-title = 💎 **Custom Plans**
-admin-cp-list-desc = Select a plan or create a new one:
+# Admin Tariffs (unified)
+admin-ch-tar-select-title = 🔄 **Change Tariff**
+    Select a new tariff for the account:
+admin-ch-tar-dur-title = ⏳ **Select Duration**
+    Tariff: { $tariff }
+    Account: { $account }
+admin-ch-tar-manual-ask = 🔢 Enter duration in months (integer):
+admin-ch-tar-confirm-title = ⚠️ **Confirm Change**
+    
+    User ID: <code>{ $tg_id }</code>
+    Account (UUID): <code>{ $uuid }</code>
+    New Tariff: **{ $tariff }**
+    New Duration: **{ $duration }**
+    
+    Are you sure?
+admin-ch-tar-success = ✅ Plan successfully changed!
+admin-ch-tar-notify-user = 
+    🔔 **Your subscription has been updated!**
+    
+    An administrator has updated your subscription parameters:
+    📦 New Plan: **{ $tariff }**
+    ⏳ Duration: **{ $duration }**
+admin-ch-tar-notify-admin-group = 
+    📢 **Tariff Changed (Admin)**
+    
+    👤 User: <code>{ $tg_id }</code>
+    🆔 UUID: <code>{ $uuid }</code>
+    📦 Plan: **{ $tariff }**
+    ⏳ Duration: **{ $duration }**
+    👨‍💻 By: { $admin }
+
+admin-cp-title = 📦 **Plans**
+admin-cp-list-desc = List of available plans:
 admin-cp-create-btn = ➕ Create Plan
 admin-cp-back-btn = 🔙 Back
 admin-cp-create-step1 = 1️⃣ Enter Plan **Name**:
@@ -268,21 +298,22 @@ admin-cp-create-step2 = 2️⃣ Enter **Squad UUID** (Internal Squad ID):
 admin-cp-create-step3 = 3️⃣ Enter **Traffic (GB)** per month (number):
 admin-cp-create-step4 = 4️⃣ Enter **Duration (months)** (0 = infinite/2099):
 admin-cp-create-step5 = 5️⃣ Enter **Tag** (or 0 to skip):
-admin-cp-val-error = ❌ Enter a number.
-admin-cp-created = ✅ Plan **{ $name }** created!
+admin-cp-val-number = ❌ Enter a number.
+admin-cp-val-int = ❌ Enter an integer.
+admin-cp-created = ✅ Plan **{ $name }** saved successfully!
 admin-cp-not-found = Plan not found
-admin-cp-view-title = 💎 **{ $name }**
+admin-cp-view-title = 📦 **{ $name }**
 admin-cp-view-squad = 🆔 Squad: `{ $squad }`
 admin-cp-view-traffic = 📊 Traffic: `{ $traffic } GB/mo`
 admin-cp-view-duration = ⏳ Duration: `{ $duration }`
 admin-cp-view-tag = 🏷 Tag: `{ $tag }`
-admin-cp-btn-grant = 🚀 Grant to User
+admin-cp-btn-grant = 🚀 Manual Grant (create new account)
 admin-cp-btn-edit = ✏️ Edit
 admin-cp-btn-delete = 🗑 Delete
 admin-cp-grant-step1 = 
-    🚀 Grant Plan **{ $name }**
+    🚀 **Manual Grant: { $name }**
     
-    1️⃣ Enter **Username** (for panel):
+    1️⃣ Enter **Username** (panel only):
 admin-cp-grant-step2 = 2️⃣ Enter **Telegram ID** (number, or 0 if none):
 admin-cp-grant-step3 = 3️⃣ Enter **Note** (or 0 if none):
 admin-cp-grant-confirm = 
@@ -295,12 +326,12 @@ admin-cp-grant-confirm =
 admin-cp-btn-confirm = ✅ Create
 admin-cp-btn-cancel = ❌ Cancel
 admin-cp-grant-success = 
-    ✅ **User Created!**
+    ✅ **Account Created!**
     
     👤 Username: `{ $username }`
     🔗 Link: { $link }
     📊 Traffic: { $traffic } GB/mo
-    ⏳ Expire: { $expire }
+    ⏳ Expires: { $expire }
 admin-cp-btn-to-menu = 🔙 Menu
 
 bot-unknown-command = 
@@ -354,41 +385,7 @@ admin-invalid-id = ❌ Invalid ID
 admin-error = ❌ Error: { $error }
 admin-month-short = mo
 
-# Admin Standard Tariffs
-admin-t-list-title = 📦 **Standard Plans:**
-admin-t-create-btn = ➕ Create Plan
-admin-t-create-name = Enter plan name:
-admin-t-create-cancel = Cancel
-admin-t-create-rub = Enter price in RUB (float):
-admin-t-create-stars = Enter price in Stars (int):
-admin-t-create-usd = Enter price in USD (float):
-admin-t-create-days = Enter duration (days):
-admin-t-create-traffic = Enter traffic limit in GB (0 for unlimited):
-admin-t-ask-squad = Enter Squad UUID (or 0 for default):
-admin-t-val-number = Must be a number.
-admin-t-val-int = Must be an integer.
-admin-t-created = ✅ Plan **{ $name }** created!
-admin-t-deleted = 🗑 Plan deleted.
-admin-t-archived = 📁 Tariff archived (cannot delete used tariff).
-admin-t-list-btn = List
-admin-t-view-title = 📦 **{ $name }**
-admin-t-view-prices = Prices: { $rub }₽ / { $stars }⭐️ / { $usd }$
-admin-t-view-duration = 📅 Duration: { $days } days
-admin-t-view-squad = 🛡 Squad: { $squad }
-admin-t-view-traffic = 📊 Traffic Limit: { $traffic } GB
-admin-t-btn-grant = 🎁 Give to User
-admin-t-grant-ask = Enter user's Telegram ID (numeric):
-admin-t-grant-success-full = 
-    ✅ Plan <b>{ $tariff }</b> granted!
-    
-    👤 User: { $user_id } { $username }
-    📅 Duration: { $days } days
-    📊 Traffic: { $traffic } GB
-    
-    🔗 Subscription Link:
-    { $link }
-admin-t-grant-error = ❌ [DEBUG] Failed to grant: { $error }
-admin-t-grant-user-not-found = ❌ User with ID { $id } not found in bot database. Ask them to /start first.
+# (Legacy standard tariffs removed)
 
 # Shop
 shop-no-tariffs = 😔 No plans available at the moment.

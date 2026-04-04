@@ -262,9 +262,39 @@ admin-success-device-deleted = Устройство успешно отключ�
 admin-error-tariff-not-found = Тариф не найден.
 admin-error-invalid-number = Пожалуйста, введите корректное число.
 
-# Admin Custom Plans (CP)
-admin-cp-title = 💎 **Спецтарифы**
-admin-cp-list-desc = Выберите тариф или создайте новый:
+# Admin Tariffs (unified)
+admin-ch-tar-select-title = 🔄 **Смена тарифа**
+    Выберите новый тариф для аккаунта:
+admin-ch-tar-dur-title = ⏳ **Выберите длительность**
+    Тариф: { $tariff }
+    Аккаунт: { $account }
+admin-ch-tar-manual-ask = 🔢 Введите длительность в месяцах (целое число):
+admin-ch-tar-confirm-title = ⚠️ **Подтверждение смены**
+    
+    Пользователь ID: <code>{ $tg_id }</code>
+    Аккаунт (UUID): <code>{ $uuid }</code>
+    Новый тариф: **{ $tariff }**
+    Новый срок: **{ $duration }**
+    
+    Вы уверены?
+admin-ch-tar-success = ✅ Тариф успешно изменен!
+admin-ch-tar-notify-user = 
+    🔔 **Ваша подписка обновлена!**
+    
+    Администратор изменил параметры вашей подписки:
+    📦 Новый тариф: **{ $tariff }**
+    ⏳ Срок: **{ $duration }**
+admin-ch-tar-notify-admin-group = 
+    📢 **Смена тарифа (Админ)**
+    
+    👤 Пользователь: <code>{ $tg_id }</code>
+    🆔 UUID: <code>{ $uuid }</code>
+    📦 Тариф: **{ $tariff }**
+    ⏳ Срок: **{ $duration }**
+    👨‍💻 Кем: { $admin }
+
+admin-cp-title = 📦 **Тарифы**
+admin-cp-list-desc = Список доступных тарифов:
 admin-cp-create-btn = ➕ Создать Тариф
 admin-cp-back-btn = 🔙 Назад
 admin-cp-create-step1 = 1️⃣ Введите **Название** тарифа:
@@ -272,21 +302,22 @@ admin-cp-create-step2 = 2️⃣ Введите **Squad UUID** (Internal Squad ID
 admin-cp-create-step3 = 3️⃣ Введите **Трафик (GB)** в месяц (число):
 admin-cp-create-step4 = 4️⃣ Введите **Срок (мес)** (0 = бессрочно/2099):
 admin-cp-create-step5 = 5️⃣ Введите **Тег** (или 0 чтобы пропустить):
-admin-cp-val-error = ❌ Введите число.
-admin-cp-created = ✅ Тариф **{ $name }** создан!
+admin-cp-val-number = ❌ Введите число.
+admin-cp-val-int = ❌ Введите целое число.
+admin-cp-created = ✅ Тариф **{ $name }** успешно сохранен!
 admin-cp-not-found = Тариф не найден
-admin-cp-view-title = 💎 **{ $name }**
+admin-cp-view-title = 📦 **{ $name }**
 admin-cp-view-squad = 🆔 Squad: `{ $squad }`
 admin-cp-view-traffic = 📊 Трафик: `{ $traffic } ГБ/мес`
 admin-cp-view-duration = ⏳ Длительность: `{ $duration }`
 admin-cp-view-tag = 🏷 Тег: `{ $tag }`
-admin-cp-btn-grant = 🚀 Выдать пользователю
+admin-cp-btn-grant = 🚀 Выдать в ручную (создать новый аккаунт)
 admin-cp-btn-edit = ✏️ Изменить
 admin-cp-btn-delete = 🗑 Удалить
 admin-cp-grant-step1 = 
-    🚀 Выдача тарифа **{ $name }**
+    🚀 **Ручная выдача: { $name }**
     
-    1️⃣ Введите **Username** (для панели):
+    1️⃣ Введите **Username** (только для панели):
 admin-cp-grant-step2 = 2️⃣ Введите **Telegram ID** (число, или 0 если нет):
 admin-cp-grant-step3 = 3️⃣ Введите **Описание/Note** (или 0 если нет):
 admin-cp-grant-confirm = 
@@ -299,7 +330,7 @@ admin-cp-grant-confirm =
 admin-cp-btn-confirm = ✅ Создать
 admin-cp-btn-cancel = ❌ Отмена
 admin-cp-grant-success = 
-    ✅ **Пользователь создан!**
+    ✅ **Аккаунт создан!**
     
     👤 Username: `{ $username }`
     🔗 Ссылка: { $link }
@@ -358,41 +389,7 @@ admin-invalid-id = ❌ Некорректный ID
 admin-error = ❌ Ошибка: { $error }
 admin-month-short = мес
 
-# Admin Standard Tariffs
-admin-t-list-title = 📦 **Список тарифов (Standard):**
-admin-t-create-btn = ➕ Создать тариф
-admin-t-create-name = Введите название тарифа:
-admin-t-create-cancel = Отмена
-admin-t-create-rub = Цена в рублях (RUB, число):
-admin-t-create-stars = Цена в звездах (Stars, целое число):
-admin-t-create-usd = Цена в долларах (USD, число):
-admin-t-create-days = Длительность (дней):
-admin-t-create-traffic = Лимит трафика в ГБ (0 для безлимита):
-admin-t-ask-squad = Введите UUID отряда (или 0 для значения по умолчанию):
-admin-t-val-number = Нужно ввести число.
-admin-t-val-int = Нужно ввести целое число.
-admin-t-created = ✅ Тариф **{ $name }** создан!
-admin-t-deleted = 🗑 Тариф удален.
-admin-t-archived = 📁 Тариф архивирован (нельзя удалить используемый).
-admin-t-list-btn = Список
-admin-t-view-title = 📦 **{ $name }**
-admin-t-view-prices = Цены: { $rub }₽ / { $stars }⭐️ / { $usd }$
-admin-t-view-duration = 📅 Срок: { $days } дн.
-admin-t-view-squad = 🛡 Отряд: { $squad }
-admin-t-view-traffic = 📊 Трафик: { $traffic } ГБ
-admin-t-btn-grant = 🎁 Выдать пользователю
-admin-t-grant-ask = Введите Telegram ID пользователя (цифры):
-admin-t-grant-success-full = 
-    ✅ Тариф <b>{ $tariff }</b> выдан!
-    
-    👤 User: { $user_id } { $username }
-    📅 Срок: { $days } дн.
-    📊 Трафик: { $traffic } ГБ
-    
-    🔗 Cсылка на подписку:
-    { $link }
-admin-t-grant-error = ❌ Ошибка выдачи: { $error }
-admin-t-grant-user-not-found = ❌ Пользователь с ID { $id } не найден в базе бота. Попросите его сначала нажать /start.
+# (Legacy standard tariffs removed)
 
 # Shop
 shop-no-tariffs = 😔 Нет доступных тарифов.
