@@ -99,6 +99,20 @@ trial-friend-created =
 
 trial-friend-failed = ❌ Failed to create an account for your friend. Please contact support.
 
+# Routing Settings
+profile-routing-separator = ────────────────────
+admin-btn-routing = 🌐 Routing Settings
+admin-routing-title = 🌐 Routing Configuration Management
+admin-routing-desc = <b>Current Description:</b>{"\n"}{ $desc }
+admin-routing-btns-count = <b>Buttons added:</b> { $count }
+admin-routing-btn-edit-desc = 📝 Edit Description
+admin-routing-btn-add-button = ➕ Add Button
+admin-routing-btn-clear-buttons = 🗑️ Clear All Buttons
+admin-routing-input-desc = Enter new description text for the routing section:
+admin-routing-input-btn-title = Enter localizable title for the new button:
+admin-routing-input-btn-url = Enter URL for the button (e.g., https://go.cyni.cc/?url=happ://routing/...):
+admin-routing-success = ✅ Settings updated successfully!
+
 trial-instruction-title = 📖 <b>Setup Instructions</b>
 
 trial-instruction-profile-hint = Click the 👤 <b>Profile</b> button to see your active subscriptions and links.
