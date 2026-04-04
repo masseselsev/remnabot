@@ -721,6 +721,12 @@ async def generate_profile_content(user_id, session, l10n):
             found_user_data = await api.get_user(rw_uuid)
             if not found_user_data or not isinstance(found_user_data, dict):
                 found_user_data = None
+        except aiohttp.ClientResponseError as e:
+            if e.status == 404:
+                # UUID is stale (user deleted from Remnawave)
+                user.remnawave_uuid = None
+                await session.commit()
+            found_user_data = None
         except:
             found_user_data = None
     
