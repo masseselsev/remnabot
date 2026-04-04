@@ -276,15 +276,15 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
                     # Traffic
                     limit_bytes = acc.get('trafficLimitBytes') or 0
                     used_bytes = acc.get('userTraffic', {}).get('usedTrafficBytes') or 0
-                    limit_gb = round(int(limit_bytes) / (1024**3), 1)
-                    used_gb = round(int(used_bytes) / (1024**3), 2)
+                    limit_gb = int(round(int(limit_bytes) / (1024**3), 0))
+                    used_gb = int(round(int(used_bytes) / (1024**3), 0))
                     
                     percent = 0
                     if limit_bytes > 0:
-                        percent = round((used_bytes / limit_bytes) * 100, 1)
+                        percent = round((used_bytes / limit_bytes) * 100, 0)
                     
                     bar_str = get_traffic_bar(percent)
-                    traffic_str = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "percent": percent, "bar": bar_str})
+                    traffic_str = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "bar": bar_str})
                     link = acc.get('subscriptionUrl') or f"{config.remnawave_url}/sub/{acc['uuid']}"
                     
                     if "TRIAL_YES" in (acc.get('tag') or ""):
@@ -869,17 +869,17 @@ async def generate_profile_content(user_id, session, l10n):
             # Traffic
             limit_bytes = acc.get('trafficLimitBytes') or 0
             used_bytes = acc.get('userTraffic', {}).get('usedTrafficBytes') or 0
-            limit_gb = round(int(limit_bytes) / (1024**3), 1)
-            used_gb = round(int(used_bytes) / (1024**3), 2)
+            limit_gb = int(round(int(limit_bytes) / (1024**3), 0))
+            used_gb = int(round(int(used_bytes) / (1024**3), 0))
             
             percent = 0
             if limit_bytes > 0:
-                percent = round((used_bytes / limit_bytes) * 100, 1)
+                percent = round((used_bytes / limit_bytes) * 100, 0)
                 
             bar_str = get_traffic_bar(percent)
 
                 
-            t_traffic = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "percent": percent, "bar": bar_str})
+            t_traffic = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "bar": bar_str})
             
             # Link
             from bot.config import config
