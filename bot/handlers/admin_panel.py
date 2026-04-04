@@ -61,6 +61,8 @@ class AdminStates(StatesGroup):
     routing_edit_desc = State()
     routing_add_btn_title = State()
     routing_add_btn_url = State()
+    routing_edit_btn_title = State()
+    routing_edit_btn_url = State()
 
 async def resolve_squads_display(squad_uuid_str: str) -> str:
     if not squad_uuid_str or squad_uuid_str in ["0", "None"]:
@@ -1145,6 +1147,7 @@ async def admin_routing_menu(callback: types.CallbackQuery, state: FSMContext, l
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(text=l10n.format_value("admin-routing-btn-edit-desc"), callback_data="admin_routing_edit_desc")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-routing-btn-manage"), callback_data="admin_routing_manage_list")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-routing-btn-add-button"), callback_data="admin_routing_add_btn")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-routing-btn-clear-buttons"), callback_data="admin_routing_clear")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-back"), callback_data="admin_menu")]
@@ -1206,3 +1209,117 @@ async def admin_routing_clear(callback: types.CallbackQuery, state: FSMContext, 
     await SettingsService.update_routing_settings(settings)
     await callback.answer(l10n.format_value("admin-routing-success"))
     await admin_routing_menu(callback, state, l10n)
+
+# --- Button Management List --- #
+@router.callback_query(F.data == "admin_routing_manage_list")
+async def admin_routing_manage_list(callback: types.CallbackQuery, l10n: FluentLocalization):
+    settings = await SettingsService.get_routing_settings()
+    btns = settings.get("buttons") or []
+    
+    keyboard_grid = []
+    for idx, btn in enumerate(btns):
+        keyboard_grid.append([types.InlineKeyboardButton(
+            text=btn.get("title") or f"Button {idx+1}", 
+            callback_data=f"admin_routing_view_{idx}"
+        )])
+        
+    keyboard_grid.append([types.InlineKeyboardButton(text=l10n.format_value("admin-btn-back"), callback_data="admin_routing_menu")])
+    kb = types.InlineKeyboardMarkup(inline_keyboard=keyboard_grid)
+    
+    await callback.message.edit_text(l10n.format_value("admin-routing-manage-title"), reply_markup=kb)
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("admin_routing_view_"))
+async def admin_routing_item_menu(callback: types.CallbackQuery, l10n: FluentLocalization):
+    idx = int(callback.data.split("_")[-1])
+    settings = await SettingsService.get_routing_settings()
+    btns = settings.get("buttons") or []
+    
+    if idx >= len(btns):
+        await callback.answer("Error: Button not found")
+        await admin_routing_manage_list(callback, l10n)
+        return
+        
+    btn = btns[idx]
+    text = l10n.format_value("admin-routing-item-edit-title", {"title": btn["title"], "url": btn["url"]})
+    
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-routing-btn-edit-title"), callback_data=f"admin_routing_edit_title_{idx}")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-routing-btn-edit-url"), callback_data=f"admin_routing_edit_url_{idx}")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-routing-btn-delete"), callback_data=f"admin_routing_delete_{idx}")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-back"), callback_data="admin_routing_manage_list")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=kb, disable_web_page_preview=True)
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("admin_routing_delete_"))
+async def admin_routing_delete_btn(callback: types.CallbackQuery, l10n: FluentLocalization):
+    idx = int(callback.data.split("_")[-1])
+    settings = await SettingsService.get_routing_settings()
+    btns = settings.get("buttons") or []
+    
+    if idx < len(btns):
+        btns.pop(idx)
+        settings["buttons"] = btns
+        await SettingsService.update_routing_settings(settings)
+        await callback.answer(l10n.format_value("admin-routing-success"))
+    
+    await admin_routing_manage_list(callback, l10n)
+
+# --- Edit Button Handlers --- #
+@router.callback_query(F.data.startswith("admin_routing_edit_title_"))
+async def admin_routing_edit_title_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    idx = int(callback.data.split("_")[-1])
+    await state.set_state(AdminStates.routing_edit_btn_title)
+    await state.update_data(edit_idx=idx)
+    await callback.message.answer(l10n.format_value("admin-routing-input-btn-title"))
+    await callback.answer()
+
+@router.message(AdminStates.routing_edit_btn_title)
+async def process_routing_edit_title(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+    data = await state.get_data()
+    idx = data.get("edit_idx")
+    
+    settings = await SettingsService.get_routing_settings()
+    btns = settings.get("buttons") or []
+    
+    if idx is not None and idx < len(btns):
+        btns[idx]["title"] = message.text
+        settings["buttons"] = btns
+        await SettingsService.update_routing_settings(settings)
+        await message.answer(l10n.format_value("admin-routing-success"))
+    
+    await state.clear()
+    await cmd_admin(message, state, l10n)
+
+@router.callback_query(F.data.startswith("admin_routing_edit_url_"))
+async def admin_routing_edit_url_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    idx = int(callback.data.split("_")[-1])
+    await state.set_state(AdminStates.routing_edit_btn_url)
+    await state.update_data(edit_idx=idx)
+    await callback.message.answer(l10n.format_value("admin-routing-input-btn-url"))
+    await callback.answer()
+
+@router.message(AdminStates.routing_edit_btn_url)
+async def process_routing_edit_url(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+    url = message.text.strip()
+    if not url.startswith("happ://"):
+        await message.answer("❌ Ошибка: Ссылка должна начинаться с `happ://` (например, `happ://routing/config`)")
+        return
+
+    full_url = f"https://go.cyni.cc/?url={url}"
+    data = await state.get_data()
+    idx = data.get("edit_idx")
+    
+    settings = await SettingsService.get_routing_settings()
+    btns = settings.get("buttons") or []
+    
+    if idx is not None and idx < len(btns):
+        btns[idx]["url"] = full_url
+        settings["buttons"] = btns
+        await SettingsService.update_routing_settings(settings)
+        await message.answer(l10n.format_value("admin-routing-success"))
+    
+    await state.clear()
+    await cmd_admin(message, state, l10n)

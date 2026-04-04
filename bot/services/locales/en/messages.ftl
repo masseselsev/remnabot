@@ -106,9 +106,22 @@ admin-routing-title = 🌐 Routing Configuration Management
 admin-routing-desc = <b>Current Description:</b> { $desc }
 admin-routing-btns-count = <b>Buttons added:</b> { $count }
 admin-routing-btn-edit-desc = 📝 Edit Description
+admin-routing-btn-manage = 📑 Manage Buttons
 admin-routing-btn-add-button = ➕ Add Button
 admin-routing-btn-clear-buttons = 🗑️ Clear All Buttons
 admin-btn-back = 🔙 Back
+
+admin-routing-manage-title = 📑 <b>Created buttons list:</b>
+admin-routing-item-edit-title = 
+    ✏️ <b>Button Management:</b>
+    
+    🏷️ <b>Title:</b> { $title }
+    🔗 <b>URL:</b> { $url }
+admin-routing-btn-edit-title = 📝 Change Title
+admin-routing-btn-edit-url = 🔗 Change URL
+admin-routing-btn-delete = 🗑️ Delete
+admin-routing-delete-confirm = Are you sure you want to delete button "{ $title }"?
+
 admin-routing-input-desc = Enter new description text for the routing section:
 admin-routing-input-btn-title = Enter localizable title for the new button:
 admin-routing-input-btn-url = Enter URL for the button (e.g., happ://routing/...):

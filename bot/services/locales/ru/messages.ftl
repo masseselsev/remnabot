@@ -223,10 +223,24 @@ admin-btn-routing = 🌐 Настройки роутинга
 admin-routing-title = 🌐 Управление настройками роутинга
 admin-routing-desc = <b>Текущее описание:</b> { $desc }
 admin-routing-btns-count = <b>Кнопок добавлено:</b> { $count }
+admin-routing-btns-count = <b>Кнопок добавлено:</b> { $count }
 admin-routing-btn-edit-desc = 📝 Изменить описание
+admin-routing-btn-manage = 📑 Управление кнопками
 admin-routing-btn-add-button = ➕ Добавить кнопку
 admin-routing-btn-clear-buttons = 🗑️ Удалить все кнопки
 admin-btn-back = 🔙 Назад
+
+admin-routing-manage-title = 📑 <b>Список созданных кнопок:</b>
+admin-routing-item-edit-title = 
+    ✏️ <b>Управление кнопкой:</b>
+    
+    🏷️ <b>Название:</b> { $title }
+    🔗 <b>URL:</b> { $url }
+admin-routing-btn-edit-title = 📝 Изменить название
+admin-routing-btn-edit-url = 🔗 Изменить URL
+admin-routing-btn-delete = 🗑️ Удалить
+admin-routing-delete-confirm = Вы уверены, что хотите удалить кнопку «{ $title }»?
+
 admin-routing-input-desc = Введите новый текст описания для раздела роутинга:
 admin-routing-input-desc-ru = Введите новый текст описания для раздела роутинга:
 admin-routing-input-btn-title = Введите название для новой кнопки:
