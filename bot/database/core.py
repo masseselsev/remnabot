@@ -2,9 +2,12 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from bot.config import config
 from bot.database.models import Base
 
+from contextlib import asynccontextmanager
+
 engine = create_async_engine(config.database_url, echo=False)
 async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
+@asynccontextmanager
 async def get_session() -> AsyncSession:
     async with async_session() as session:
         yield session
