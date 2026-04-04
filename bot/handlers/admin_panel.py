@@ -1139,7 +1139,7 @@ async def admin_routing_menu(callback: types.CallbackQuery, state: FSMContext, l
     
     text = (
         f"{l10n.format_value('admin-routing-title')}\n\n"
-        f"{l10n.format_value('admin-routing-desc', {'desc': desc})}\n"
+        f"{l10n.format_value('admin-routing-desc', {'desc': desc})}\n\n"
         f"{l10n.format_value('admin-routing-btns-count', {'count': len(btns)})}"
     )
     
