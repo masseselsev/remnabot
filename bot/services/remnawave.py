@@ -29,7 +29,7 @@ class RemnawaveAPI:
                 async with session.request(method, url, headers=self.headers, json=data, params=params) as response:
                     raw_text = await response.text()
                     if not response.ok:
-                        log_level = logger.warning if response.status == 404 else logger.error
+                        log_level = logger.info if response.status == 404 else logger.error
                         log_level("remnawave_api_fail", 
                                   method=method, 
                                   url=url,
