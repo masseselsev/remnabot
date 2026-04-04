@@ -950,17 +950,36 @@ async def generate_profile_content(user_id, session, l10n):
             additional_info = "\n\n" + l10n.format_value("profile-additional-accounts") + "\n"
             additional_info += "\n──────────────────────────\n".join(additional_items)
 
+    from bot.services.settings import SettingsService
+    routing = await SettingsService.get_routing_settings()
+    routing_desc = routing.get("description")
+    routing_btns = routing.get("buttons") or []
+    
+    routing_text = ""
+    if routing_desc:
+        separator = l10n.format_value("profile-routing-separator")
+        routing_text = f"\n\n{separator}\n{routing_desc}"
+
     text = (
         f"{l10n.format_value('profile-id', {'id': user.id})}\n"
         f"{formatted_status}"
         f"{traffic_info}"
         f"{additional_info}"
+        f"{routing_text}"
     )
     
-    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+    # Base buttons
+    keyboard_grid = [
         [types.InlineKeyboardButton(text=l10n.format_value("btn-devices"), callback_data="my_devices")],
         [types.InlineKeyboardButton(text="🌐 Language / Язык", callback_data="change_lang")]
-    ])
+    ]
+    
+    # Add routing buttons
+    for btn in routing_btns:
+        if btn.get("title") and btn.get("url"):
+            keyboard_grid.append([types.InlineKeyboardButton(text=btn["title"], url=btn["url"])])
+    
+    kb = types.InlineKeyboardMarkup(inline_keyboard=keyboard_grid)
     
     return text, kb
 

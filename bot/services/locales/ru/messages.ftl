@@ -216,6 +216,21 @@ error-profile-load = Ошибка загрузки профиля
 lang-selector-title = Выберите язык:
 lang-ru = 🇷🇺 Русский
 lang-en = 🇺🇸 English
+
+# Routing Settings
+profile-routing-separator = ────────────────────
+admin-btn-routing = 🌐 Настройки роутинга
+admin-routing-title = 🌐 Управление настройками роутинга
+admin-routing-desc = <b>Текущее описание:</b>{"\n"}{ $desc }
+admin-routing-btns-count = <b>Кнопок добавлено:</b> { $count }
+admin-routing-btn-edit-desc = 📝 Изменить описание
+admin-routing-btn-add-button = ➕ Добавить кнопку
+admin-routing-btn-clear-buttons = 🗑️ Удалить все кнопки
+admin-routing-input-desc = Введите новый текст описания для раздела роутинга:
+admin-routing-input-btn-title = Введите название для новой кнопки:
+admin-routing-input-btn-url = Введите URL для кнопки (например, https://go.cyni.cc/?url=happ://routing/...):
+admin-routing-success = ✅ Настройки обновлены!
+
 lang-changed-msg = 
     ✅ Язык успешно изменен на русский.
     Меню пользователя обновлено.

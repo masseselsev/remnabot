@@ -56,6 +56,11 @@ class AdminStates(StatesGroup):
     # Promo Codes
     promo_code = State()
     promo_uses = State()
+    
+    # Routing Settings
+    routing_edit_desc = State()
+    routing_add_btn_title = State()
+    routing_add_btn_url = State()
 
 async def resolve_squads_display(squad_uuid_str: str) -> str:
     if not squad_uuid_str or squad_uuid_str in ["0", "None"]:
@@ -86,6 +91,7 @@ async def get_main_kb(l10n: FluentLocalization):
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-search-user"), callback_data="admin_search_user")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-promos"), callback_data="admin_promos_list")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-welcome"), callback_data="admin_welcome_mgmt")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-routing"), callback_data="admin_routing_menu")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-exit"), callback_data="admin_exit")]
     ])
 
@@ -1121,3 +1127,77 @@ async def admin_promo_delete(message: types.Message, session, state: FSMContext,
     await session.commit()
     await message.answer(f"✅ Promo code ` {code} ` deleted.")
     await cmd_admin(message, state, l10n)
+
+# --- Routing Settings --- #
+@router.callback_query(F.data == "admin_routing_menu")
+async def admin_routing_menu(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    if callback.from_user.id not in config.admin_ids: return
+    
+    settings = await SettingsService.get_routing_settings()
+    desc = settings.get("description") or "N/A"
+    btns = settings.get("buttons") or []
+    
+    text = (
+        f"{l10n.format_value('admin-routing-title')}\n\n"
+        f"{l10n.format_value('admin-routing-desc', {'desc': desc})}\n"
+        f"{l10n.format_value('admin-routing-btns-count', {'count': len(btns)})}"
+    )
+    
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-routing-btn-edit-desc"), callback_data="admin_routing_edit_desc")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-routing-btn-add-button"), callback_data="admin_routing_add_btn")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-routing-btn-clear-buttons"), callback_data="admin_routing_clear")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-back"), callback_data="admin_menu")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+@router.callback_query(F.data == "admin_routing_edit_desc")
+async def admin_routing_edit_desc(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    await state.set_state(AdminStates.routing_edit_desc)
+    await callback.message.answer(l10n.format_value("admin-routing-input-desc"))
+    await callback.answer()
+
+@router.message(AdminStates.routing_edit_desc)
+async def process_routing_desc(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+    settings = await SettingsService.get_routing_settings()
+    settings["description"] = message.text
+    await SettingsService.update_routing_settings(settings)
+    await message.answer(l10n.format_value("admin-routing-success"))
+    await state.clear()
+    await cmd_admin(message, state, l10n)
+
+@router.callback_query(F.data == "admin_routing_add_btn")
+async def admin_routing_add_btn_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    await state.set_state(AdminStates.routing_add_btn_title)
+    await callback.message.answer(l10n.format_value("admin-routing-input-btn-title"))
+    await callback.answer()
+
+@router.message(AdminStates.routing_add_btn_title)
+async def process_routing_btn_title(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+    await state.update_data(btn_title=message.text)
+    await state.set_state(AdminStates.routing_add_btn_url)
+    await message.answer(l10n.format_value("admin-routing-input-btn-url"))
+
+@router.message(AdminStates.routing_add_btn_url)
+async def process_routing_btn_url(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+    data = await state.get_data()
+    title = data.get("btn_title")
+    url = message.text
+    
+    settings = await SettingsService.get_routing_settings()
+    if "buttons" not in settings: settings["buttons"] = []
+    settings["buttons"].append({"title": title, "url": url})
+    
+    await SettingsService.update_routing_settings(settings)
+    await message.answer(l10n.format_value("admin-routing-success"))
+    await state.clear()
+    await cmd_admin(message, state, l10n)
+
+@router.callback_query(F.data == "admin_routing_clear")
+async def admin_routing_clear(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    settings = await SettingsService.get_routing_settings()
+    settings["buttons"] = []
+    await SettingsService.update_routing_settings(settings)
+    await callback.answer(l10n.format_value("admin-routing-success"))
+    await admin_routing_menu(callback, state, l10n)

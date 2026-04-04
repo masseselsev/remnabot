@@ -35,3 +35,19 @@ class SettingsService:
                 "traffic": float(items.get("trial_traffic_gb", 100.0)),
                 "squad_uuid": items.get("trial_squad_uuid", "")
             }
+
+    @staticmethod
+    async def get_routing_settings() -> dict:
+        import json
+        val = await SettingsService.get_setting("routing_settings")
+        if not val:
+            return {"description": "", "buttons": []}
+        try:
+            return json.loads(val)
+        except:
+            return {"description": "", "buttons": []}
+
+    @staticmethod
+    async def update_routing_settings(data: dict):
+        import json
+        await SettingsService.set_setting("routing_settings", json.dumps(data))
