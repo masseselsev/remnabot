@@ -219,10 +219,9 @@ lang-en = 🇺🇸 English
 
 # Routing Settings
 profile-routing-separator = ────────────────────
-admin-btn-routing = 🌐 Настройки роутинга
-admin-routing-title = 🌐 Управление настройками роутинга
+admin-btn-routing = 🛰️ Настройки роутинга
+admin-routing-title = 🛰️ Управление настройками роутинга
 admin-routing-desc = <b>Текущее описание:</b> { $desc }
-admin-routing-btns-count = <b>Кнопок добавлено:</b> { $count }
 admin-routing-btns-count = <b>Кнопок добавлено:</b> { $count }
 admin-routing-btn-edit-desc = 📝 Изменить описание
 admin-routing-btn-manage = 📑 Управление кнопками
@@ -242,12 +241,11 @@ admin-routing-btn-delete = 🗑️ Удалить
 admin-routing-delete-confirm = Вы уверены, что хотите удалить кнопку «{ $title }»?
 
 admin-routing-input-desc = Введите новый текст описания для раздела роутинга:
-admin-routing-input-desc-ru = Введите новый текст описания для раздела роутинга:
 admin-routing-input-btn-title = Введите название для новой кнопки:
 admin-routing-input-btn-url = Введите URL для кнопки (например, happ://routing/...):
 admin-routing-success = ✅ Настройки обновлены!
 
-btn-routing-settings = 🌐 Настройки роутинга
+btn-routing-settings = 🛰️ Настройки роутинга
 
 lang-changed-msg = 
     ✅ Язык успешно изменен на русский.
