@@ -1,4 +1,6 @@
 from aiogram import Router, types, F
+import aiohttp
+
 from aiogram.filters import CommandStart, StateFilter
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
