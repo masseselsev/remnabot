@@ -1255,7 +1255,7 @@ async def admin_proxy_view(callback: types.CallbackQuery, session, l10n: FluentL
         await callback.answer(l10n.format_value("admin-error-not-found"))
         return
     
-    text = f"🌐 <b>{proxy.name}</b>\n\nLink: <code>{proxy.link}</code>"
+    text = f"🌐 <b>{proxy.name}</b>\n\nLink: <a href='{proxy.link}'>{proxy.link}</a>"
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(text=l10n.format_value("btn-delete"), callback_data=f"adm_proxy_del_{proxy.id}")],
         [types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="admin_proxies_list")]
