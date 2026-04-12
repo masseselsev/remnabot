@@ -1,4 +1,7 @@
+start-supporter-greeting = 🌟 <b>Thank you for your support!</b> As a premium user, you get access to bonus features and direct links.
+{ "" }
 start-welcome = { $settings_msg }
+
 start-active-sub-title = ℹ️ <b>Active Subscriptions</b>:
 start-active-sub-item = 
     { $index }. 👤 <b>{ $username }</b>
@@ -18,6 +21,7 @@ btn-disclaimer = ⚖️ About Project
 btn-accept-disclaimer = ✅ Accept Terms
 
 profile-title = 👤 Your Profile
+profile-supporter-label = 💎 <b>Project Supporter!</b>
 profile-id = 👤 Tg ID: { $id }
 profile-status = Status: { $status }
 

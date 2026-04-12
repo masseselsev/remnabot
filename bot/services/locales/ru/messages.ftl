@@ -1,4 +1,7 @@
+start-supporter-greeting = 🌟 <b>Спасибо за Вашу поддержку!</b> Как премиум-пользователь, вы получаете доступ к бонусным функциям и прямым ссылкам.
+{ "" }
 start-welcome = { $settings_msg }
+
 start-active-sub-title = ℹ️ <b>Активные подписки:</b>
 start-active-sub-item = 
     { $index }. 👤 <b>{ $username }</b>
@@ -18,6 +21,7 @@ btn-accept-disclaimer = ✅ Принять условия
 btn-trial = 🔌 Подключиться (3 дня бесплатно!)
 
 profile-title = 👤 Ваш профиль
+profile-supporter-label = 💎 <b>Поддержал проект! (Supporter)</b>
 profile-id = 👤 Tg ID: { $id }
 profile-status = Статус: { $status }
 

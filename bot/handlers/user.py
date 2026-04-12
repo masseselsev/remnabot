@@ -65,6 +65,17 @@ def get_traffic_bar(percent: float) -> str:
     return "".join(bar)
 
 
+def is_paid_account(user_data: dict) -> bool:
+    """A user is a Supporter if any active account has > 200 GB limit."""
+    limit_bytes = user_data.get('trafficLimitBytes') or 0
+    limit_gb = limit_bytes / (1024**3)
+    return limit_gb > 200
+
+def is_level_2(user_data: dict) -> bool:
+    """Accounts issued via bot have username starting with 'tg_'."""
+    return user_data.get('username', '').startswith('tg_')
+
+
 async def check_existing_accounts(user_id: int):
     """
     Searches for accounts by Telegram ID.
@@ -222,8 +233,17 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
         # Unescape literal \n characters
         welcome_text = welcome_text.replace("\\n", "\n")
     
+    # 1. Check supporter status across all accounts
+    std_acc, manual_accs = await check_existing_accounts(message.from_user.id)
+    all_accs = [a for a in [std_acc] + manual_accs if a]
+    is_supporter = any(is_paid_account(acc) for acc in all_accs)
+    
     # Combined Message construction
-    full_text = welcome_text
+    full_text = ""
+    if is_supporter:
+        full_text += l10n.format_value("start-supporter-greeting") + "\n"
+    
+    full_text += welcome_text
     
     # Keyboard
     btn_shop = l10n.format_value("btn-shop")
@@ -789,8 +809,8 @@ async def generate_profile_content(user_id, session, l10n):
         if not main_link:
              main_link = f"{config.remnawave_url}/sub/{user.remnawave_uuid}"
         
-        # Encrypt if it's a trial
-        if "TRIAL_YES" in (found_user_data.get('tag') or ""):
+        # Encrypt if it's Level 2 (issued via bot)
+        if is_level_2(found_user_data):
             main_link = await get_crypto_link(main_link)
 
         # Link formatting: happ:// stays mono, others become clickable
@@ -836,8 +856,18 @@ async def generate_profile_content(user_id, session, l10n):
 
         traffic_info = f"\n{t_tariff}\n{t_traffic}\n{t_devices}\n{t_link}"
 
-    # Additional Accounts Visibility
+    # Additional Accounts Visibility & Supporter Check
     std_acc, manual_accs = await check_existing_accounts(user.id)
+    all_active_accs = [a for a in [std_acc] + manual_accs if a]
+    
+    # Final Supporter decision: Any of the accounts > 200GB?
+    user_is_supporter = any(is_paid_account(acc) for acc in all_active_accs)
+    
+    if user_is_supporter:
+        # Add badge/text to formatted_status or top of info
+        supporter_label = l10n.format_value("profile-supporter-label")
+        formatted_status = f"{supporter_label}\n{formatted_status}"
+
     additional_accs = []
     current_uuid = user.remnawave_uuid
     
@@ -895,7 +925,7 @@ async def generate_profile_content(user_id, session, l10n):
             if not link:
                 link = f"{config.remnawave_url}/sub/{acc.get('uuid')}"
             
-            if "TRIAL_YES" in (acc.get('tag') or ""):
+            if is_level_2(acc):
                 link = await get_crypto_link(link)
 
             # Link formatting: happ:// stays mono, others become clickable

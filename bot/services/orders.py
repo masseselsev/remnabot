@@ -120,11 +120,10 @@ async def fulfill_order(order_id: int, session, payment_id: str = None, note: st
         # Tags (Spec: single string matching ^[A-Z0-9_]+$)
         current_tag = rw_user.get('tag') or ""
         
-        if tariff.is_trial and current_tag == "TRIAL_YES":
-             logger.warning("fulfillment_rejected", reason="Trial already used (tag found)")
-             return False
-
+        # Note: TRIAL_YES tag is decorative and no longer used for rejection logic.
+        
         # Prepare update payload
+
         updates = {
             "onHold": False
         }
