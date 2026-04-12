@@ -58,6 +58,10 @@ class AdminStates(StatesGroup):
     routing_add_btn_url = State()
     routing_edit_btn_title = State()
     routing_edit_btn_url = State()
+    
+    # Proxy Management
+    proxy_name = State()
+    proxy_link = State()
 
 async def resolve_squads_display(squad_uuid_str: str) -> str:
     if not squad_uuid_str or squad_uuid_str in ["0", "None"]:
@@ -88,6 +92,7 @@ async def get_main_kb(l10n: FluentLocalization):
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-promos"), callback_data="admin_promos_list")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-welcome"), callback_data="admin_welcome_mgmt")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-routing"), callback_data="admin_routing_menu")],
+        [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-proxies"), callback_data="admin_proxies_list")],
         [types.InlineKeyboardButton(text=l10n.format_value("admin-btn-exit"), callback_data="admin_exit")]
     ])
 
@@ -1217,5 +1222,84 @@ async def process_routing_edit_url(message: types.Message, state: FSMContext, l1
         await SettingsService.update_routing_settings(settings)
         await message.answer(l10n.format_value("admin-routing-success"))
     
+    await state.clear()
+    await cmd_admin(message, state, l10n)
+
+# --- Proxy Management --- #
+
+@router.callback_query(F.data == "admin_proxies_list")
+async def admin_proxies_list(callback: types.CallbackQuery, session, l10n: FluentLocalization):
+    stmt = select(models.Proxy).order_by(models.Proxy.id)
+    result = await session.execute(stmt)
+    proxies = result.scalars().all()
+    
+    kb_rows = []
+    for p in proxies:
+        kb_rows.append([types.InlineKeyboardButton(text=f"🌐 {p.name}", callback_data=f"adm_proxy_view_{p.id}")])
+    
+    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("admin-proxy-btn-add"), callback_data="adm_proxy_add")])
+    kb_rows.append([types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="admin_menu")])
+    
+    text = l10n.format_value("admin-proxies-title")
+    if not proxies:
+        text += "\n\n" + l10n.format_value("admin-proxies-empty")
+        
+    await callback.message.edit_text(text, reply_markup=types.InlineKeyboardMarkup(inline_keyboard=kb_rows))
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("adm_proxy_view_"))
+async def admin_proxy_view(callback: types.CallbackQuery, session, l10n: FluentLocalization):
+    proxy_id = int(callback.data.split("_")[-1])
+    proxy = await session.get(models.Proxy, proxy_id)
+    if not proxy:
+        await callback.answer(l10n.format_value("admin-error-not-found"))
+        return
+    
+    text = f"🌐 <b>{proxy.name}</b>\n\nLink: <code>{proxy.link}</code>"
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text=l10n.format_value("btn-delete"), callback_data=f"adm_proxy_del_{proxy.id}")],
+        [types.InlineKeyboardButton(text=l10n.format_value("btn-back"), callback_data="admin_proxies_list")]
+    ])
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("adm_proxy_del_"))
+async def admin_proxy_delete(callback: types.CallbackQuery, session, l10n: FluentLocalization):
+    proxy_id = int(callback.data.split("_")[-1])
+    stmt = delete(models.Proxy).where(models.Proxy.id == proxy_id)
+    await session.execute(stmt)
+    await session.commit()
+    await callback.answer(l10n.format_value("admin-proxy-deleted"))
+    await admin_proxies_list(callback, session, l10n)
+
+@router.callback_query(F.data == "adm_proxy_add")
+async def admin_proxy_add_start(callback: types.CallbackQuery, state: FSMContext, l10n: FluentLocalization):
+    await state.set_state(AdminStates.proxy_name)
+    await callback.message.edit_text(l10n.format_value("admin-proxy-add-step1"), 
+                                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="admin_proxies_list")]]))
+    await callback.answer()
+
+@router.message(AdminStates.proxy_name)
+async def admin_proxy_add_name(message: types.Message, state: FSMContext, l10n: FluentLocalization):
+    await state.update_data(proxy_name=message.text.strip())
+    await state.set_state(AdminStates.proxy_link)
+    await message.answer(l10n.format_value("admin-proxy-add-step2"), 
+                         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[[types.InlineKeyboardButton(text=l10n.format_value("btn-cancel"), callback_data="admin_proxies_list")]]))
+
+@router.message(AdminStates.proxy_link)
+async def admin_proxy_add_link(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    link = message.text.strip()
+    if not (link.startswith("tg://") or link.startswith("https://t.me/proxy")):
+        await message.answer("❌ Ошибка: Ссылка должна быть валидным прокси-урлом (например, `tg://proxy?...`)")
+        return
+        
+    data = await state.get_data()
+    name = data.get("proxy_name")
+    
+    new_proxy = models.Proxy(name=name, link=link)
+    session.add(new_proxy)
+    await session.commit()
+    
+    await message.answer(l10n.format_value("admin-proxy-success"))
     await state.clear()
     await cmd_admin(message, state, l10n)

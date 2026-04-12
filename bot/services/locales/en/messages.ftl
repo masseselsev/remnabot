@@ -10,8 +10,19 @@ start-active-sub-item =
     { $link }
     ──────────────────
 btn-shop = 🛒 Buy VPN
-btn-profile = 👤 Profile
-btn-devices = 📱 My Devices
+admin-btn-routing = 🛠 Button Management
+admin-btn-proxies = 🌐 Proxy Management
+admin-btn-exit = 🚪 Exit
+
+admin-proxies-title = 🌐 <b>Telegram Proxy Management</b>
+admin-proxies-empty = Proxy list is empty.
+admin-proxy-btn-add = ➕ Add Proxy
+admin-proxy-add-step1 = Enter proxy name (e.g., "Germany MTProto"):
+admin-proxy-add-step2 = Send the proxy link (tg://proxy?... or t.me/proxy?...):
+admin-proxy-success = ✅ Proxy added successfully!
+admin-proxy-deleted = 🗑 Proxy deleted.
+
+profile-proxies-title = 🌐 <b>Our Telegram Proxies:</b>
 btn-yes = ✅ Yes
 btn-no = ❌ No
 btn-trial = 🎁 3 days free!

@@ -98,3 +98,10 @@ class Tariff(Base):
     traffic_gb: Mapped[float] = mapped_column(Float)
     duration_months: Mapped[int] = mapped_column(Integer)
     tag: Mapped[str | None] = mapped_column(String, nullable=True)
+
+class Proxy(Base):
+    __tablename__ = "proxies"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255))
+    link: Mapped[str] = mapped_column(String)

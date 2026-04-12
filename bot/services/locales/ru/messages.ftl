@@ -351,8 +351,19 @@ admin-title = 🔧 **Админ-панель**
     Выберите раздел:
 admin-btn-tariffs = 📦 Тарифы
 admin-btn-trial = 🎁 Настройки Триала
-admin-btn-cp = 💎 Спецтарифы
-admin-btn-exit = ❌ Выйти
+admin-btn-routing = 🛠 Управление кнопками
+admin-btn-proxies = 🌐 Управление Proxy
+admin-btn-exit = 🚪 Выход
+
+admin-proxies-title = 🌐 <b>Управление Telegram Proxy</b>
+admin-proxies-empty = Список прокси пуст.
+admin-proxy-btn-add = ➕ Добавить прокси
+admin-proxy-add-step1 = Введите название прокси (например, "Германия MTProto"):
+admin-proxy-add-step2 = Отправьте ссылку на прокси (tg://proxy?... или t.me/proxy?...):
+admin-proxy-success = ✅ Прокси успешно добавлен!
+admin-proxy-deleted = 🗑 Прокси удален.
+
+profile-proxies-title = 🌐 <b>Наши Telegram Proxy:</b>
 admin-btn-welcome = 📝 Настройка приветствия
 admin-exit-msg = 👋 Вы вышли из админ-панели.
 

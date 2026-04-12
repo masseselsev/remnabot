@@ -992,11 +992,23 @@ async def generate_profile_content(user_id, session, l10n):
     routing = await SettingsService.get_routing_settings()
     routing_btns = routing.get("buttons") or []
     
+    proxy_info = ""
+    if user_is_supporter:
+        stmt = select(models.Proxy).order_by(models.Proxy.id)
+        result = await session.execute(stmt)
+        proxies = result.scalars().all()
+        if proxies:
+            proxy_items = []
+            for p in proxies:
+                proxy_items.append(f"🌐 <a href='{p.link}'>{p.name}</a>")
+            proxy_info = "\n\n" + l10n.format_value("profile-proxies-title") + "\n" + "\n".join(proxy_items)
+
     text = (
         f"{l10n.format_value('profile-id', {'id': user.id})}\n"
         f"{formatted_status}"
         f"{traffic_info}"
         f"{additional_info}"
+        f"{proxy_info}"
     )
     
     # Base buttons
