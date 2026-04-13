@@ -27,6 +27,7 @@ profile-supporter-label = 🌟 <b>Поддержал проект! (Supporter)</
 
 # Shared components
 profile-expiry = 📅 Активна до { $date }
+profile-expiry-forever = 📅 Активна до конца...
 profile-expiry-caption = Активна до
 profile-traffic = 📊 Трафик: { $used } / { $limit } GB { $bar }
 profile-devices = 📱 Устройств: { $count } / { $limit }

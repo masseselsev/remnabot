@@ -771,7 +771,10 @@ async def generate_profile_content(user_id, session, l10n):
                 
                 now_utc = datetime.now(timezone.utc)
                 if edt > now_utc:
-                    t_expiry = l10n.format_value("profile-expiry", {"date": date_str})
+                    if edt.year == 2099:
+                        t_expiry = l10n.format_value("profile-expiry-forever")
+                    else:
+                        t_expiry = l10n.format_value("profile-expiry", {"date": date_str})
                 else:
                     t_expiry = l10n.format_value("subscription-expired", {"date": date_str})
             except: pass
@@ -851,7 +854,7 @@ async def generate_profile_content(user_id, session, l10n):
     if user_is_supporter:
         header = l10n.format_value("profile-supporter-label") + "\n\n"
     
-    content = header + "\n\n".join(account_blocks)
+    content = header + "\n\n\n".join(account_blocks)
     if not content.strip():
         content = l10n.format_value("subscription-none")
 
