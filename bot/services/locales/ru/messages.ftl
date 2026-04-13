@@ -3,6 +3,7 @@ start-supporter-greeting = 🌟 <b>Спасибо за Вашу поддержк
 start-welcome = { $settings_msg }
 
 start-active-sub-title = ℹ️ <b>Активные подписки:</b>
+start-discovery-hint = ℹ️ Зайди в <b>Профиль</b> чтобы увидеть активные подписки. Прочти <b>«О проекте»</b> и <b>«Инструкцию»</b>. Если ты здесь по приглашению, получи тестовую подписку по кнопке с подарком 🎁.
 start-active-sub-item = 
     { $index }. 👤 <b>{ $username }</b>
     { $expiry }
@@ -31,7 +32,7 @@ profile-expiry-forever = 📅 Активна до конца...
 profile-expiry-caption = Активна до
 profile-traffic = 📊 Трафик: { $used } / { $limit } GB { $bar }
 profile-devices = 📱 Устройств: { $count } / { $limit }
-profile-link = 🔗 Ссылка: { $link }
+profile-link = 🔗 <a href="{ $link }">Нажми для подключения подписки</a>
 
 profile-account-item = 
     👤 <b>{ $username }</b>

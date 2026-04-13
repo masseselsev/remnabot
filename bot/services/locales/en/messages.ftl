@@ -3,6 +3,7 @@ start-supporter-greeting = 🌟 <b>Thank you for your support!</b> As a premium 
 start-welcome = { $settings_msg }
 
 start-active-sub-title = ℹ️ <b>Active Subscriptions</b>:
+start-discovery-hint = ℹ️ Go to <b>Profile</b> to see active subscriptions. Read <b>'About Project'</b> and <b>'Instructions'</b>. If you are here by invitation, get a test subscription via the gift button 🎁.
 start-active-sub-item = 
     { $index }. 👤 <b>{ $username }</b>
     { $expiry }
@@ -44,7 +45,7 @@ profile-expiry-forever = 📅 Active until the end...
 profile-expiry-caption = Active until
 profile-traffic = 📊 Traffic: { $used } / { $limit } GB { $bar }
 profile-devices = 📱 Devices: { $count } / { $limit }
-profile-link = 🔗 Link: { $link }
+profile-link = 🔗 <a href="{ $link }">Click to connect subscription</a>
 
 profile-account-item = 
     👤 <b>{ $username }</b>

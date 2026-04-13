@@ -13,29 +13,42 @@ async def handle_routing_redirect(request: web.Request):
     try:
         user_id_str = request.query.get("u")
         btn_idx_str = request.query.get("i")
+        target_url = request.query.get("url")
         signature = request.query.get("s")
         
-        if not all([user_id_str, btn_idx_str, signature]):
+        if not all([user_id_str, signature]) or (not btn_idx_str and not target_url):
             return web.Response(text="Missing parameters", status=400)
             
         user_id = int(user_id_str)
-        btn_idx = int(btn_idx_str)
         
-        # Verify signature
-        if not verify_routing_signature(user_id, btn_idx, signature):
-            logger.warning("invalid_routing_signature", user_id=user_id, btn_idx=btn_idx)
-            return web.Response(text="Invalid signature", status=403)
-            
-        # Get button URL
-        settings = await SettingsService.get_routing_settings()
-        btns = settings.get("buttons") or []
+        from bot.utils.crypto import generate_url_signature
         
-        if btn_idx >= len(btns):
-            return web.Response(text="Button not found", status=404)
+        final_url = None
+        title = "Generic Link"
+        
+        # 1. Handle Routing Button Redirect
+        if btn_idx_str:
+            btn_idx = int(btn_idx_str)
+            if not verify_routing_signature(user_id, btn_idx, signature):
+                logger.warning("invalid_routing_signature", user_id=user_id, btn_idx=btn_idx)
+                return web.Response(text="Invalid signature", status=403)
             
-        btn = btns[btn_idx]
-        title = btn.get("title", "Unknown")
-        final_url = btn.get("url")
+            settings = await SettingsService.get_routing_settings()
+            btns = settings.get("buttons") or []
+            if btn_idx < len(btns):
+                btn = btns[btn_idx]
+                title = btn.get("title", "Unknown")
+                final_url = btn.get("url")
+        
+        # 2. Handle Generic URL Redirect
+        elif target_url:
+            expected_sig = generate_url_signature(user_id, target_url)
+            from hmac import compare_digest
+            if not compare_digest(expected_sig, signature):
+                logger.warning("invalid_url_signature", user_id=user_id, url=target_url)
+                return web.Response(text="Invalid signature", status=403)
+            final_url = target_url
+            title = "Subscription Link"
         
         if not final_url:
             return web.Response(text="URL not found", status=404)

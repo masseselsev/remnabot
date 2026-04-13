@@ -269,119 +269,8 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
     # Keyboard
     keyboard = get_main_keyboard(l10n, is_supporter)
     
-    # Now append subscriptions to full_text if they exist
-    try:
-        from bot.services.remnawave import api
-        from html import escape
-        
-        std_acc, manual_accs = await check_existing_accounts(message.from_user.id)
-        all_accs = []
-        if std_acc: all_accs.append(std_acc)
-        all_accs.extend(manual_accs)
-        
-        # Deduplicate by UUID
-        unique_accs = {a['uuid']: a for a in all_accs}.values()
-        
-        now_utc = datetime.now(timezone.utc)
-        msk_tz = timezone(timedelta(hours=3))
-        
-        if unique_accs:
-            sub_title = l10n.format_value('start-active-sub-title') or 'ℹ️ <b>Активные подписки:</b>'
-            sub_lines = [f"\n\n{sub_title}"]
-            
-            for idx, acc in enumerate(unique_accs, 1):
-                expire_at = acc.get('expireAt')
-                is_active = False
-                exp_date = "Unlimited"
-                
-                if expire_at:
-                    dt = parser.isoparse(expire_at)
-                    if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
-                    if dt > now_utc:
-                        is_active = True
-                        exp_date = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
-                else:
-                    is_active = True # Unlimited
-                    
-                if is_active:
-                    # Traffic
-                    limit_bytes = acc.get('trafficLimitBytes') or 0
-                    used_bytes = acc.get('userTraffic', {}).get('usedTrafficBytes') or 0
-                    limit_gb = int(round(int(limit_bytes) / (1024**3), 0))
-                    used_gb = int(round(int(used_bytes) / (1024**3), 0))
-                    
-                    percent = 0
-                    if limit_bytes > 0:
-                        percent = round((used_bytes / limit_bytes) * 100, 0)
-                    
-                    bar_str = get_traffic_bar(percent)
-                    traffic_str = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "bar": bar_str})
-                    link = acc.get('subscriptionUrl') or f"{config.remnawave_url}/sub/{acc['uuid']}"
-                    
-                    if "TRIAL_YES" in (acc.get('tag') or ""):
-                        link = await get_crypto_link(link)
-
-                    uname = acc.get('username', 'Unknown')
-                    acc_uuid = acc['uuid']
-                    
-                    # Fetch devices and full sub info for authentic HWID limit status
-                    try:
-                        acc_devices = await api.get_user_devices(acc_uuid)
-                        acc_device_count = len(acc_devices)
-                        
-                        # Robust shortUuid extraction from subscriptionUrl to get isHwidLimited flag
-                        # We take the last part of the path, which works for both /sub/ID and /ID formats
-                        short_uuid = link.rstrip("/").split("/")[-1] if link else None
-                        
-                        is_hwid_unlimited = False
-                        if short_uuid:
-                            sub_info = await api.get_sub_info(short_uuid)
-                            if sub_info:
-                                # Explicitly check for False (not None, not True)
-                                is_hwid_unlimited = sub_info.get('convertedUserInfo', {}).get('isHwidLimited') == False
-                        
-                        if is_hwid_unlimited:
-                            acc_display_limit = "∞"
-                        else:
-                            # Standard limit logic
-                            acc_full = await api.get_user(acc_uuid)
-                            raw_limit = acc_full.get('hwidDeviceLimit')
-                            # User says: if limit is 0, it means infinity. If null, it means 2.
-                            if raw_limit == 0:
-                                acc_display_limit = "∞"
-                            elif raw_limit is None:
-                                acc_display_limit = "2"
-                            else:
-                                acc_display_limit = str(raw_limit)
-                        
-                        t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_display_limit})
-                    except Exception as e:
-                        logger.error("hwid_fetch_error", error=str(e), acc_uuid=acc_uuid)
-                        t_devices = "" # Silent fail if API error
-
-                    # Link formatting: happ:// stays mono, others become clickable
-                    if link.startswith("happ://"):
-                        formatted_link = f"🔗 <code>{link}</code>"
-                    else:
-                        formatted_link = f'🔗 <a href="{link}">{link}</a>'
-
-                    item = [
-                        f"{idx}. 👤 <b>{escape(uname)}</b>",
-                        f"📅 {l10n.format_value('profile-expiry-caption') or 'До:'} {exp_date}",
-                        f"{traffic_str}"
-                    ]
-                    if t_devices:
-                        item.append(t_devices)
-                    item.append(formatted_link)
-                    
-                    sub_lines.append("\n".join(item))
-
-            if len(sub_lines) > 1:
-                full_text += "\n" + "\n\n──────────────────────────\n".join(sub_lines)
-
-    except Exception as e:
-        logger.debug("start_active_subs_info_failed", error=str(e))
-        
+    # 2. Append instruction hint
+    full_text += f"\n\n{l10n.format_value("start-discovery-hint")}"
     await message.answer(full_text, reply_markup=keyboard, parse_mode="HTML", disable_web_page_preview=True)
 
 
@@ -806,11 +695,24 @@ async def generate_profile_content(user_id, session, l10n):
         t_link = ""
         link = full_data.get('subscriptionUrl')
         if not link: link = f"{config.remnawave_url}/sub/{acc_uuid}"
-        if is_level_2(full_data): link = await get_crypto_link(link)
         
-        if link:
-            formatted_link = f"<code>{link}</code>" if link.startswith("happ://") else f'<a href="{link}">{link}</a>'
-            t_link = l10n.format_value("profile-link", {"link": formatted_link})
+        from bot.utils.crypto import get_crypto_link, get_generic_redirect_url
+        
+        raw_link = link
+        is_l2 = is_level_2(full_data)
+        
+        # Level 2 (Happ) Logic
+        if is_l2:
+            raw_link = await get_crypto_link(link) # returns happ://...
+            # Wrap in redirect
+            clickable_link = get_generic_redirect_url(user.id, raw_link)
+        else:
+            clickable_link = link
+
+        t_link = l10n.format_value("profile-link", {"link": clickable_link})
+        if is_l2:
+            # Append raw quote
+            t_link += f"\n\n<blockquote>{raw_link}</blockquote>"
 
         # Devices Line
         t_devices = ""

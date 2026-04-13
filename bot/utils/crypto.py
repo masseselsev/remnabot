@@ -40,9 +40,22 @@ def verify_routing_signature(user_id: int, btn_index: int, signature: str) -> bo
     expected = generate_routing_signature(user_id, btn_index)
     return hmac.compare_digest(expected, signature)
 
+def generate_url_signature(user_id: int, url: str) -> str:
+    """Generate a signature for a generic URL redirect."""
+    msg = f"{user_id}:{url}".encode()
+    return hmac.new(SECRET_KEY.encode(), msg, hashlib.sha256).hexdigest()[:16]
+
 def get_routing_redirect_url(user_id: int, btn_index: int) -> str:
-    """Generate the full redirect URL with signature for tracking."""
+    """Generate the full routing redirect URL with signature for tracking."""
     base_url = config.webhook_url.rstrip("/")
     # We use a simple path like /r for redirection
     sig = generate_routing_signature(user_id, btn_index)
     return f"{base_url}/r?u={user_id}&i={btn_index}&s={sig}"
+
+def get_generic_redirect_url(user_id: int, target_url: str) -> str:
+    """Generate a full signed redirect URL for a generic target."""
+    import urllib.parse
+    base_url = config.webhook_url.rstrip("/")
+    sig = generate_url_signature(user_id, target_url)
+    safe_url = urllib.parse.quote(target_url, safe='')
+    return f"{base_url}/r?u={user_id}&url={safe_url}&s={sig}"
