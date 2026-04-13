@@ -270,7 +270,7 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
     keyboard = get_main_keyboard(l10n, is_supporter)
     
     # 2. Append instruction hint
-    full_text += f"\n\n{l10n.format_value("start-discovery-hint")}"
+    full_text += f"\n\n{l10n.format_value('start-discovery-hint')}"
     await message.answer(full_text, reply_markup=keyboard, parse_mode="HTML", disable_web_page_preview=True)
 
 
