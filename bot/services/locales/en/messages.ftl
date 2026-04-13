@@ -10,6 +10,8 @@ start-active-sub-item =
     { $link }
     ──────────────────
 btn-shop = 🛒 Buy VPN
+btn-profile = 👤 Profile
+btn-devices = 📱 My Devices
 admin-btn-routing = 🛠 Button Management
 admin-btn-proxies = 🌐 Proxy Management
 admin-btn-exit = 🚪 Exit

@@ -19,7 +19,7 @@ btn-instruction = 📖 Инструкция
 btn-disclaimer = ⚖️ О проекте
 btn-proxies = 🌟 Telegram Proxy
 btn-accept-disclaimer = ✅ Принять условия
-btn-trial = 🔌 Подключиться (3 дня бесплатно!)
+btn-trial = 🎁 3 дня бесплатно!
 
 profile-title = 👤 Ваш профиль
 profile-supporter-label = 🌟 <b>Поддержал проект! (Supporter)</b>
