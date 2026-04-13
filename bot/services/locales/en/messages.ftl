@@ -34,10 +34,9 @@ btn-disclaimer = ⚖️ About Project
 btn-proxies = 🌟 Telegram Proxy
 btn-accept-disclaimer = ✅ Accept Terms
 
+# Subscription fields
 profile-title = 👤 Your Profile
 profile-supporter-label = 🌟 <b>Project Supporter!</b>
-profile-id = 👤 Tg ID: { $id }
-profile-status = Status: { $status }
 
 # Shared components
 profile-expiry = 📅 Active until { $date }
@@ -46,11 +45,9 @@ profile-traffic = 📊 Traffic: { $used } / { $limit } GB { $bar }
 profile-devices = 📱 Devices: { $count } / { $limit }
 profile-link = 🔗 Link: { $link }
 
-profile-additional-accounts = 
-    <b>##########################</b>
-    📂 <b>Special Accounts:</b>
 profile-account-item = 
     👤 <b>{ $username }</b>
+    { $tariff }
     { $expiry }
     { $traffic }
     { $devices }

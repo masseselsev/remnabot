@@ -21,10 +21,9 @@ btn-proxies = 🌟 Telegram Proxy
 btn-accept-disclaimer = ✅ Принять условия
 btn-trial = 🎁 3 дня бесплатно!
 
+# Поля подписки
 profile-title = 👤 Ваш профиль
 profile-supporter-label = 🌟 <b>Поддержал проект! (Supporter)</b>
-profile-id = 👤 Tg ID: { $id }
-profile-status = Статус: { $status }
 
 # Shared components
 profile-expiry = 📅 Активна до { $date }
@@ -33,11 +32,9 @@ profile-traffic = 📊 Трафик: { $used } / { $limit } GB { $bar }
 profile-devices = 📱 Устройств: { $count } / { $limit }
 profile-link = 🔗 Ссылка: { $link }
 
-profile-additional-accounts = 
-    <b>##########################</b>
-    📂 <b>Специальные аккаунты:</b>
 profile-account-item = 
     👤 <b>{ $username }</b>
+    { $tariff }
     { $expiry }
     { $traffic }
     { $devices }

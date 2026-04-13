@@ -724,297 +724,146 @@ async def show_active_trial_info(messageable, data, uuid, l10n: FluentLocalizati
         formatted_link = f"<code>{link}</code>"
     else:
         formatted_link = f'<a href="{link}">{link}</a>'
-
-    await messageable.answer(
-        f"{msg_active}\n\n"
-        f"{msg_traffic}\n"
-        f"{msg_expires}\n\n"
-        f"{msg_link}\n{formatted_link}\n\n"
-        f"{instruction}",
-        disable_web_page_preview=True,
-        parse_mode="HTML"
-    )
-
 async def generate_profile_content(user_id, session, l10n):
     user = await session.get(models.User, user_id)
     if not user: return None, None
     
-    # Fetch status from Remnawave
     from bot.services.remnawave import api
     from dateutil import parser
     from datetime import datetime, timezone, timedelta
+    from bot.config import config
 
-    rw_uuid = user.remnawave_uuid
-    found_user_data = None
+    # 1. Collect all linked accounts
+    std_acc, manual_accs = await check_existing_accounts(user.id)
+    all_raw_accs = [a for a in [std_acc] + manual_accs if a]
     
-    if rw_uuid:
+    # Deduplicate by UUID
+    unique_accs_map = {a['uuid']: a for a in all_raw_accs}
+    all_accs = list(unique_accs_map.values())
+    # Sort: Current primary first, then by username
+    all_accs.sort(key=lambda x: (x.get('uuid') != user.remnawave_uuid, x.get('username', '').lower()))
+
+    # 2. Supporter Check
+    user_is_supporter = any(is_paid_account(acc) for acc in all_accs)
+    
+    # 3. Build Account Blocks
+    account_blocks = []
+    for acc in all_accs:
+        acc_uuid = acc.get('uuid')
+        u_name = acc.get('username', 'Unknown')
+        
+        # We need full user data for some fields (HWID limit, current traffic, etc.)
         try:
-            found_user_data = await api.get_user(rw_uuid)
-            if not found_user_data or not isinstance(found_user_data, dict):
-                found_user_data = None
-        except aiohttp.ClientResponseError as e:
-            if e.status == 404:
-                # UUID is stale (user deleted from Remnawave)
-                user.remnawave_uuid = None
-                await session.commit()
-            found_user_data = None
+            full_data = await api.get_user(acc_uuid)
+            if not full_data: full_data = acc
         except:
-            found_user_data = None
-    
-    # Tariff Name from local DB
-    stmt = select(models.Order).options(selectinload(models.Order.tariff)).where(
-        models.Order.user_id == user.id, 
-        models.Order.status == models.OrderStatus.PAID
-    ).order_by(models.Order.created_at.desc()).limit(1)
-    
-    result = await session.execute(stmt)
-    last_order = result.scalar_one_or_none()
-    tariff_name = last_order.tariff.name if last_order and last_order.tariff else "Unknown"
+            full_data = acc
 
-    formatted_status = l10n.format_value("subscription-none")
-    traffic_info = ""
-    
-    if found_user_data:
-        # Expiry
-        expire_at_str = found_user_data.get('expireAt')
-        if expire_at_str:
+        # Expiry Line
+        t_expiry = ""
+        exp_raw = full_data.get('expireAt')
+        if exp_raw:
             try:
-                dt = parser.isoparse(expire_at_str)
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
-                
+                edt = parser.isoparse(exp_raw)
+                if edt.tzinfo is None: edt = edt.replace(tzinfo=timezone.utc)
                 msk_tz = timezone(timedelta(hours=3))
-                date_str = dt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
+                date_str = edt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
+                
                 now_utc = datetime.now(timezone.utc)
-                if dt > now_utc:
-                    formatted_status = l10n.format_value("profile-expiry", {"date": date_str})
+                if edt > now_utc:
+                    t_expiry = l10n.format_value("profile-expiry", {"date": date_str})
                 else:
-                    formatted_status = l10n.format_value("subscription-expired", {"date": date_str})
-            except:
-                pass
-        
-        # Traffic
-        limit_bytes = found_user_data.get('trafficLimitBytes') or 0
-        used_bytes = found_user_data.get('userTraffic', {}).get('usedTrafficBytes') or 0
-        
-        limit_gb = int(round(int(limit_bytes) / (1024**3), 0))
-        used_gb = int(round(int(used_bytes) / (1024**3), 0))
-        
-        percent = 0
+                    t_expiry = l10n.format_value("subscription-expired", {"date": date_str})
+            except: pass
+
+        # Tariff Line (Try to find last order for this UUID or use generic)
+        t_tariff = ""
+        # For simplicity and since we don't track UUID mappings in local DB orders perfectly for manual accounts,
+        # we only show it for the primary or if we can find a matching order.
+        stmt = select(models.Order).options(selectinload(models.Order.tariff)).where(
+            models.Order.user_id == user.id,
+            models.Order.remnawave_uuid == acc_uuid,
+            models.Order.status == models.OrderStatus.PAID
+        ).order_by(models.Order.created_at.desc()).limit(1)
+        res = await session.execute(stmt)
+        last_order = res.scalar_one_or_none()
+        if last_order and last_order.tariff:
+            t_tariff = l10n.format_value("profile-tariff", {"name": last_order.tariff.name})
+
+        # Traffic Line
+        t_traffic = ""
+        limit_bytes = full_data.get('trafficLimitBytes') or 0
+        used_bytes = full_data.get('userTraffic', {}).get('usedTrafficBytes') or 0
         if limit_bytes > 0:
+            limit_gb = int(round(int(limit_bytes) / (1024**3), 0))
+            used_gb = int(round(int(used_bytes) / (1024**3), 0))
             percent = round((used_bytes / limit_bytes) * 100, 0)
-            
-        bar_str = get_traffic_bar(percent)
+            bar_str = get_traffic_bar(percent)
+            t_traffic = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "bar": bar_str})
 
-            
-        t_tariff = l10n.format_value("profile-tariff", {"name": tariff_name})
-        t_traffic = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "bar": bar_str})
+        # Link Line
+        t_link = ""
+        link = full_data.get('subscriptionUrl')
+        if not link: link = f"{config.remnawave_url}/sub/{acc_uuid}"
+        if is_level_2(full_data): link = await get_crypto_link(link)
         
-        traffic_info = f"\n{t_tariff}\n{t_traffic}"
-        
-        # Link for main account
-        from bot.config import config
-        main_link = found_user_data.get('subscriptionUrl')
-        if not main_link:
-             main_link = f"{config.remnawave_url}/sub/{user.remnawave_uuid}"
-        
-        # Encrypt if it's Level 2 (issued via bot)
-        if is_level_2(found_user_data):
-            main_link = await get_crypto_link(main_link)
+        if link:
+            formatted_link = f"<code>{link}</code>" if link.startswith("happ://") else f'<a href="{link}">{link}</a>'
+            t_link = l10n.format_value("profile-link", {"link": formatted_link})
 
-        # Link formatting: happ:// stays mono, others become clickable
-        if main_link.startswith("happ://"):
-            formatted_main_link = f"<code>{main_link}</code>"
-        else:
-            formatted_main_link = f'<a href="{main_link}">{main_link}</a>'
-
-        t_link = l10n.format_value("profile-link", {"link": formatted_main_link})
-        
-        # Device count and HWID limit logic (Main Account)
+        # Devices Line
+        t_devices = ""
         try:
-            devices = await api.get_user_devices(rw_uuid)
+            devices = await api.get_user_devices(acc_uuid)
             device_count = len(devices)
             
-            # Robust shortUuid extraction from main_link to get isHwidLimited flag
-            short_uuid = main_link.rstrip("/").split("/")[-1] if main_link else None
-            
+            # Short UUID for HWID check
+            short_uuid = link.rstrip("/").split("/")[-1] if link else None
             is_hwid_unlimited = False
             if short_uuid:
-                sub_info = await api.get_sub_info(short_uuid)
-                if sub_info:
-                    # Explicitly check for False (not None, not True)
-                    is_hwid_unlimited = sub_info.get('convertedUserInfo', {}).get('isHwidLimited') == False
+                try:
+                    sub_info = await api.get_sub_info(short_uuid)
+                    is_hwid_unlimited = sub_info.get('convertedUserInfo', {}).get('isHwidLimited', True) == False
+                except: pass
             
             if is_hwid_unlimited:
                 display_limit = "∞"
             else:
-                # Standard limit logic
-                raw_limit = found_user_data.get('hwidDeviceLimit')
-                # User says: if limit is 0, it means infinity. If null, it means 2.
-                if raw_limit == 0:
-                    display_limit = "∞"
-                elif raw_limit is None:
-                    display_limit = "2"
-                else:
-                    display_limit = str(raw_limit)
+                raw_limit = full_data.get('hwidDeviceLimit')
+                if raw_limit == 0: display_limit = "∞"
+                elif raw_limit is None: display_limit = "2"
+                else: display_limit = str(raw_limit)
             
             t_devices = l10n.format_value("profile-devices", {"count": device_count, "limit": display_limit})
-        except Exception as e:
-            logger.error("hwid_fetch_error_main", error=str(e), rw_uuid=rw_uuid)
-            t_devices = "" # Silent fail if API error
+        except: pass
 
-        traffic_info = f"\n{t_tariff}\n{t_traffic}\n{t_devices}\n{t_link}"
+        # Combine into item
+        item_text = l10n.format_value("profile-account-item", {
+            "username": u_name,
+            "tariff": t_tariff,
+            "expiry": t_expiry,
+            "traffic": t_traffic,
+            "devices": t_devices,
+            "link": t_link
+        }).strip()
+        account_blocks.append(item_text)
 
-    # Additional Accounts Visibility & Supporter Check
-    std_acc, manual_accs = await check_existing_accounts(user.id)
-    all_active_accs = [a for a in [std_acc] + manual_accs if a]
-    
-    # Final Supporter decision: Any of the accounts > 200GB?
-    user_is_supporter = any(is_paid_account(acc) for acc in all_active_accs)
-    
+    # 4. Final Formatting
+    header = ""
     if user_is_supporter:
-        # Add badge/text to formatted_status or top of info
-        supporter_label = l10n.format_value("profile-supporter-label")
-        formatted_status = f"{supporter_label}\n{formatted_status}"
-
-    additional_accs = []
-    current_uuid = user.remnawave_uuid
+        header = l10n.format_value("profile-supporter-label") + "\n\n"
     
-    # Add manual accounts if they are not current
-    for m in manual_accs:
-        muuid = m.get('uuid')
-        if muuid != current_uuid:
-            additional_accs.append(m)
-            
-    # Add standard account if it exists but is not current
-    if std_acc and std_acc.get('uuid') != current_uuid:
-        additional_accs.append(std_acc)
-        
-    additional_info = ""
-    if additional_accs:
-        additional_items = []
-        for acc in additional_accs:
-            u_name = acc.get('username', 'Unknown')
-            
-            # Expiry
-            exp_str = l10n.format_value("subscription-none") # Default if missing
-            if acc.get('expireAt'):
-                try:
-                    edt = parser.isoparse(acc.get('expireAt'))
-                    if edt.tzinfo is None: edt = edt.replace(tzinfo=timezone.utc)
-                    msk_tz = timezone(timedelta(hours=3))
-                    date_str = edt.astimezone(msk_tz).strftime("%Y-%m-%d %H:%M MSK")
-                    
-                    now_utc = datetime.now(timezone.utc)
-                    if edt > now_utc:
-                        exp_str = l10n.format_value("profile-expiry", {"date": date_str})
-                    else:
-                        exp_str = l10n.format_value("subscription-expired", {"date": date_str})
-                        
-                except: pass
-                
-            # Traffic
-            limit_bytes = acc.get('trafficLimitBytes') or 0
-            used_bytes = acc.get('userTraffic', {}).get('usedTrafficBytes') or 0
-            limit_gb = int(round(int(limit_bytes) / (1024**3), 0))
-            used_gb = int(round(int(used_bytes) / (1024**3), 0))
-            
-            percent = 0
-            if limit_bytes > 0:
-                percent = round((used_bytes / limit_bytes) * 100, 0)
-                
-            bar_str = get_traffic_bar(percent)
+    content = header + "\n\n".join(account_blocks)
 
-                
-            t_traffic = l10n.format_value("profile-traffic", {"used": used_gb, "limit": limit_gb, "bar": bar_str})
-            
-            # Link
-            from bot.config import config
-            link = acc.get('subscriptionUrl')
-            if not link:
-                link = f"{config.remnawave_url}/sub/{acc.get('uuid')}"
-            
-            if is_level_2(acc):
-                link = await get_crypto_link(link)
-
-            # Link formatting: happ:// stays mono, others become clickable
-            if link.startswith("happ://"):
-                formatted_link = f"<code>{link}</code>"
-            else:
-                formatted_link = f'<a href="{link}">{link}</a>'
-
-            t_link = l10n.format_value("profile-link", {"link": formatted_link})
-            
-            # Device count for additional accounts (Fetch full sub info for HWID status)
-            acc_uuid = acc.get('uuid')
-            try:
-                acc_devices = await api.get_user_devices(acc_uuid)
-                acc_device_count = len(acc_devices)
-                
-                # Robust shortUuid extraction from link to get isHwidLimited flag
-                short_uuid = link.rstrip("/").split("/")[-1] if link else None
-                
-                is_hwid_unlimited = False
-                if short_uuid:
-                    try:
-                        sub_info = await api.get_sub_info(short_uuid)
-                        if sub_info:
-                            # Explicitly check for False (not None, not True)
-                            is_hwid_unlimited = sub_info.get('convertedUserInfo', {}).get('isHwidLimited') == False
-                    except: pass
-                
-                if is_hwid_unlimited:
-                    acc_display_limit = "∞"
-                else:
-                    # Standard limit logic (Fetch full user for multiLogin/hwidDeviceLimit if needed)
-                    acc_full = await api.get_user(acc_uuid)
-                    raw_limit = acc_full.get('hwidDeviceLimit')
-                    # User says: if limit is 0, it means infinity. If null, it means 2.
-                    if raw_limit == 0:
-                        acc_display_limit = "∞"
-                    elif raw_limit is None:
-                        acc_display_limit = "2"
-                    else:
-                        acc_display_limit = str(raw_limit)
-                
-                t_devices = l10n.format_value("profile-devices", {"count": acc_device_count, "limit": acc_display_limit})
-            except Exception as e:
-                # Basic fallback
-                logger.error("hwid_fetch_error_additional", error=str(e), acc_uuid=acc_uuid)
-                acc_devices = await api.get_user_devices(acc_uuid)
-                t_devices = l10n.format_value("profile-devices", {"count": len(acc_devices), "limit": acc.get('multiLogin', 2) or 2})
-
-            item_text = l10n.format_value("profile-account-item", {
-                "username": u_name, 
-                "expiry": exp_str,
-                "traffic": t_traffic,
-                "devices": t_devices,
-                "link": t_link
-            })
-            additional_items.append(item_text)
-            
-        if additional_items:
-            additional_info = "\n\n" + l10n.format_value("profile-additional-accounts") + "\n"
-            additional_info += "\n──\n".join(additional_items)
-
+    # Inline buttons (Language, Devices etc)
     from bot.services.settings import SettingsService
     routing = await SettingsService.get_routing_settings()
     routing_btns = routing.get("buttons") or []
     
-    text = (
-        f"{l10n.format_value('profile-id', {'id': user.id})}\n"
-        f"{formatted_status}"
-        f"{traffic_info}"
-        f"{additional_info}"
-    )
-    
-    # Base buttons
     keyboard_grid = [
         [types.InlineKeyboardButton(text=l10n.format_value("btn-devices"), callback_data="my_devices")],
         [types.InlineKeyboardButton(text="🌐 Language / Язык", callback_data="change_lang")]
     ]
-    
-    # Add routing submenu button if any buttons exist
     if routing_btns:
         keyboard_grid.append([types.InlineKeyboardButton(
             text=l10n.format_value("btn-routing-settings"), 
@@ -1023,7 +872,7 @@ async def generate_profile_content(user_id, session, l10n):
     
     kb = types.InlineKeyboardMarkup(inline_keyboard=keyboard_grid)
     
-    return text, kb
+    return content, kb
 
 @router.message(F.text.in_(["👤 Профиль", "👤 Profile"]), StateFilter("*"))
 async def process_profile(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
