@@ -1147,18 +1147,12 @@ async def set_language(callback: types.CallbackQuery, session, l10n: FluentLocal
         new_l10n = FluentLocalization(["en"], ["messages.ftl"], I18nMiddleware.get_loader())
 
     text = new_l10n.format_value("lang-changed-msg")
-    btn_profile = new_l10n.format_value("btn-profile")
-    btn_trial = new_l10n.format_value("btn-trial")
-    btn_support = new_l10n.format_value("btn-support")
-    btn_instruction = new_l10n.format_value("btn-instruction")
-    btn_disclaimer = new_l10n.format_value("btn-disclaimer")
-
-    kb = [
-        [types.KeyboardButton(text=btn_profile), types.KeyboardButton(text=btn_trial)],
-        [types.KeyboardButton(text=btn_support), types.KeyboardButton(text=btn_instruction)],
-        [types.KeyboardButton(text=btn_disclaimer)]
-    ]
-    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    # 1. Check supporter status to include proxy button if needed
+    std_acc, manual_accs = await check_existing_accounts(callback.from_user.id)
+    all_accs = [a for a in [std_acc] + manual_accs if a]
+    is_supporter = any(is_paid_account(acc) for acc in all_accs)
+    
+    keyboard = get_main_keyboard(new_l10n, is_supporter)
     
     await callback.message.delete()
     await callback.message.answer(text, reply_markup=keyboard)
