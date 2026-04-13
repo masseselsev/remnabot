@@ -17,12 +17,12 @@ btn-no = ❌ Нет
 btn-support = 🆘 Поддержка (в т.ч. проекта 🙃)
 btn-instruction = 📖 Инструкция
 btn-disclaimer = ⚖️ О проекте
-btn-proxies = 🌐 Telegram Proxy
+btn-proxies = 🌟 Telegram Proxy
 btn-accept-disclaimer = ✅ Принять условия
 btn-trial = 🔌 Подключиться (3 дня бесплатно!)
 
 profile-title = 👤 Ваш профиль
-profile-supporter-label = 💎 <b>Поддержал проект! (Supporter)</b>
+profile-supporter-label = 🌟 <b>Поддержал проект! (Supporter)</b>
 profile-id = 👤 Tg ID: { $id }
 profile-status = Статус: { $status }
 
