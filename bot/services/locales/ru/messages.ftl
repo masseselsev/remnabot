@@ -366,7 +366,7 @@ admin-proxy-add-step2 = Отправьте ссылку на прокси (tg://
 admin-proxy-success = ✅ Прокси успешно добавлен!
 admin-proxy-deleted = 🗑 Прокси удален.
 
-profile-proxies-title = 🌐 <b>Наши Telegram Proxy:</b>
+profile-proxies-title = 🌟 <b>Telegram Proxy (Только для Supporter)</b>
 admin-btn-welcome = 📝 Настройка приветствия
 admin-exit-msg = 👋 Вы вышли из админ-панели.
 

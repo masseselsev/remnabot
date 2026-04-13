@@ -22,7 +22,7 @@ admin-proxy-add-step2 = Send the proxy link (tg://proxy?... or t.me/proxy?...):
 admin-proxy-success = ✅ Proxy added successfully!
 admin-proxy-deleted = 🗑 Proxy deleted.
 
-profile-proxies-title = 🌐 <b>Our Telegram Proxies:</b>
+profile-proxies-title = 🌟 <b>Telegram Proxy (Supporter Only)</b>
 btn-yes = ✅ Yes
 btn-no = ❌ No
 btn-trial = 🎁 3 days free!
