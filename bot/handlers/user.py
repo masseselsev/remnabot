@@ -776,19 +776,17 @@ async def generate_profile_content(user_id, session, l10n):
                     t_expiry = l10n.format_value("subscription-expired", {"date": date_str})
             except: pass
 
-        # Tariff Line (Try to find last order for this UUID or use generic)
+        # Tariff Line (Only for primary account to ensure database accuracy)
         t_tariff = ""
-        # For simplicity and since we don't track UUID mappings in local DB orders perfectly for manual accounts,
-        # we only show it for the primary or if we can find a matching order.
-        stmt = select(models.Order).options(selectinload(models.Order.tariff)).where(
-            models.Order.user_id == user.id,
-            models.Order.remnawave_uuid == acc_uuid,
-            models.Order.status == models.OrderStatus.PAID
-        ).order_by(models.Order.created_at.desc()).limit(1)
-        res = await session.execute(stmt)
-        last_order = res.scalar_one_or_none()
-        if last_order and last_order.tariff:
-            t_tariff = l10n.format_value("profile-tariff", {"name": last_order.tariff.name})
+        if acc_uuid == user.remnawave_uuid:
+            stmt = select(models.Order).options(selectinload(models.Order.tariff)).where(
+                models.Order.user_id == user.id,
+                models.Order.status == models.OrderStatus.PAID
+            ).order_by(models.Order.created_at.desc()).limit(1)
+            res = await session.execute(stmt)
+            last_order = res.scalar_one_or_none()
+            if last_order and last_order.tariff:
+                t_tariff = l10n.format_value("profile-tariff", {"name": last_order.tariff.name})
 
         # Traffic Line
         t_traffic = ""
@@ -854,6 +852,8 @@ async def generate_profile_content(user_id, session, l10n):
         header = l10n.format_value("profile-supporter-label") + "\n\n"
     
     content = header + "\n\n".join(account_blocks)
+    if not content.strip():
+        content = l10n.format_value("subscription-none")
 
     # Inline buttons (Language, Devices etc)
     from bot.services.settings import SettingsService
