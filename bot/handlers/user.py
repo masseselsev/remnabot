@@ -1046,7 +1046,7 @@ async def cmd_instruction_msg(message: types.Message, state: FSMContext, l10n: F
     )
     await message.answer(instruction, disable_web_page_preview=True, parse_mode="HTML")
  
-@router.message(F.text.in_(["🌐 Telegram Proxy"]), StateFilter("*"))
+@router.message(F.text.in_(["🌟 Telegram Proxy", "🌐 Telegram Proxy"]), StateFilter("*"))
 async def process_proxies_button(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
     await state.clear()
     
