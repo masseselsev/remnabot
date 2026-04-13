@@ -29,6 +29,7 @@ btn-trial = 🎁 3 days free!
 btn-support = 🆘 Support (incl. project 🙃)
 btn-instruction = 📖 Instruction
 btn-disclaimer = ⚖️ About Project
+btn-proxies = 🌐 Telegram Proxy
 btn-accept-disclaimer = ✅ Accept Terms
 
 profile-title = 👤 Your Profile

@@ -75,6 +75,27 @@ def is_level_2(user_data: dict) -> bool:
     """Accounts issued via bot have username starting with 'tg_'."""
     return user_data.get('username', '').startswith('tg_')
 
+def get_main_keyboard(l10n: FluentLocalization, is_supporter: bool = False) -> types.ReplyKeyboardMarkup:
+    """Centralized helper for building the main reply keyboard."""
+    btn_profile = l10n.format_value("btn-profile")
+    btn_trial = l10n.format_value("btn-trial")
+    btn_support = l10n.format_value("btn-support")
+    btn_instruction = l10n.format_value("btn-instruction")
+    btn_disclaimer = l10n.format_value("btn-disclaimer")
+    
+    kb = [
+        [types.KeyboardButton(text=btn_profile), types.KeyboardButton(text=btn_trial)],
+        [types.KeyboardButton(text=btn_support), types.KeyboardButton(text=btn_instruction)]
+    ]
+    
+    if is_supporter:
+        btn_proxies = l10n.format_value("btn-proxies")
+        kb.append([types.KeyboardButton(text=btn_proxies), types.KeyboardButton(text=btn_disclaimer)])
+    else:
+        kb.append([types.KeyboardButton(text=btn_disclaimer)])
+        
+    return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
 
 async def check_existing_accounts(user_id: int):
     """
@@ -246,19 +267,7 @@ async def cmd_start(message: types.Message, state: FSMContext, session, l10n: Fl
     full_text += welcome_text
     
     # Keyboard
-    btn_shop = l10n.format_value("btn-shop")
-    btn_profile = l10n.format_value("btn-profile")
-    btn_trial = l10n.format_value("btn-trial")
-    btn_support = l10n.format_value("btn-support")
-    btn_instruction = l10n.format_value("btn-instruction")
-    btn_disclaimer = l10n.format_value("btn-disclaimer")
-    
-    kb = [
-        [types.KeyboardButton(text=btn_profile), types.KeyboardButton(text=btn_trial)],
-        [types.KeyboardButton(text=btn_support), types.KeyboardButton(text=btn_instruction)],
-        [types.KeyboardButton(text=btn_disclaimer)]
-    ]
-    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    keyboard = get_main_keyboard(l10n, is_supporter)
     
     # Now append subscriptions to full_text if they exist
     try:
@@ -992,23 +1001,11 @@ async def generate_profile_content(user_id, session, l10n):
     routing = await SettingsService.get_routing_settings()
     routing_btns = routing.get("buttons") or []
     
-    proxy_info = ""
-    if user_is_supporter:
-        stmt = select(models.Proxy).order_by(models.Proxy.id)
-        result = await session.execute(stmt)
-        proxies = result.scalars().all()
-        if proxies:
-            proxy_items = []
-            for p in proxies:
-                proxy_items.append(f"🌐 <a href='{p.link}'>{p.name}</a>")
-            proxy_info = "\n\n" + l10n.format_value("profile-proxies-title") + "\n" + "\n".join(proxy_items)
-
     text = (
         f"{l10n.format_value('profile-id', {'id': user.id})}\n"
         f"{formatted_status}"
         f"{traffic_info}"
         f"{additional_info}"
-        f"{proxy_info}"
     )
     
     # Base buttons
@@ -1049,6 +1046,34 @@ async def cmd_instruction_msg(message: types.Message, state: FSMContext, l10n: F
     )
     await message.answer(instruction, disable_web_page_preview=True, parse_mode="HTML")
  
+@router.message(F.text.in_(["🌐 Telegram Proxy"]), StateFilter("*"))
+async def process_proxies_button(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
+    await state.clear()
+    
+    # 1. Check supporter status
+    std_acc, manual_accs = await check_existing_accounts(message.from_user.id)
+    all_accs = [a for a in [std_acc] + manual_accs if a]
+    is_supporter = any(is_paid_account(acc) for acc in all_accs)
+    
+    if not is_supporter:
+        # If somehow accessed by a non-supporter, don't show info
+        return
+        
+    stmt = select(models.Proxy).order_by(models.Proxy.id)
+    result = await session.execute(stmt)
+    proxies = result.scalars().all()
+    
+    if not proxies:
+        await message.answer(l10n.format_value("admin-proxies-empty"))
+        return
+        
+    proxy_items = []
+    for p in proxies:
+        proxy_items.append(f"🌐 <a href='{p.link}'>{p.name}</a>")
+    
+    text = l10n.format_value("profile-proxies-title") + "\n\n" + "\n".join(proxy_items)
+    await message.answer(text, parse_mode="HTML", disable_web_page_preview=True)
+
 @router.message(F.text.in_(["⚖️ О проекте", "⚖️ About Project"]), StateFilter("*"))
 async def cmd_disclaimer(message: types.Message, state: FSMContext, session, l10n: FluentLocalization):
     await state.clear()
